@@ -8,10 +8,10 @@ import datetime
 import sys
 
 # PARAMETERS #
-varName = "SIS"
+varName = "sal"
 inputTarDirectory = "D:\\SIS Test"
 outputDirectory = "D:\\Datascrape"
-mergeDirectory = "D:\\Merge"
+mergeDirectory = "D:\\SAL"
 minLongitude = 5.85  # Swiss min=5.9
 maxLongitude = 10.6  # Swiss max=10.55
 minLatitude = 45.75  # Swiss min=45.8

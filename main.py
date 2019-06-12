@@ -10,12 +10,14 @@ import haspr
 # PARAMETERS #
 
 modelsToRun = ["SIS"]
+haspr.usableSurface = 0.4  # fraction of water body surface area which can be used
 haspr.set_coordinates("D:\\coordinates of interest.csv")  # .csv file path of coordinates
-haspr.sisDataPath = "D:\\00_SIS_merged.nc"  # path to SIS dataset
-haspr.sisdDataPath = ""  # path to SIS direct dataset
-haspr.salDataPath = ""  # path to surface albedo dataset
-haspr.temporalResolution = 30  # model resolution in minutes
-haspr.spatialResolution = 0.05  # resolution of datasets in degrees
+haspr.set_sites("D:\\sites.csv")  # .csv file path of sites (incl. surface area)
+haspr.sisDataPath = "D:\\POA Datasets\\00_2017_SIS_merged.nc"  # path to SIS dataset
+haspr.sisdDataPath = "D:\\POA Datasets\\01_2017_SIS_direct_merged.nc"  # path to SIS direct dataset
+haspr.salDataPath = "D:\\POA Datasets\\02_SAL_merged.nc"  # path to surface albedo dataset
+haspr.sisnDataPath = "D:\\POA Datasets\\03_2017_SIS_normal_merged.nc"  # path to SIS normal dataset
+haspr.demDataPath = "D:\\swiss_dem_2018.csv"  # path to SwissGrid demand data
 
 # solar development pipeline parameters:
 haspr.sdp_developmentPhases = ["Proposal", "Term Sheet", "Negotiation", "PPA"]
@@ -61,11 +63,9 @@ haspr.run_models(modelObjects)
 print("Models successfully executed.")
 print("Preparing output...")
 
-print("-> Output of length {} generated.".format(len(haspr.results)))
-
 # dump output to disk
 print("Dumping data to local disk...")
-haspr.dump_results()
+haspr.dump_results(modelObjects)
 
 print("Data dump complete.")
 
@@ -74,7 +74,6 @@ print("Writing output report to disk...")
 
 haspr.write_output_report()
 
-print("-> Output report of length {} generated.".format(len(haspr.reportText)))
 print(consoleBreak)
 
 dateFinish = datetime.datetime.now(pytz.utc)

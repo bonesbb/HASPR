@@ -1,27 +1,35 @@
 import haspr
 from haspr import Dataset
+import sys
 
-haspr.sisDataPath = "D:\\00_SIS_merged.nc"  # path to SIS dataset
-haspr.sisdDataPath = ""  # path to SIS direct dataset
-haspr.salDataPath = ""  # path to surface albedo dataset
+path = "D:\\POA Datasets\\02_SAL_merged.nc"
 
-time = '2017-01-01T09:30:00.000000000'
+d = Dataset("test")
+d.spatial_res = 0.25
 
-# SIS dataset
-d = Dataset("SIS CH", [])
+haspr.load_netcdf_dataset(path, d)
 
-haspr.load_netcdf_dataset(haspr.sisDataPath, d)
+salX = d.payload.sal
 
-sisX = d.payload.SIS
+time = '2005-01-01T00:00:00.000000000'
 
 # point of interest
 latT = 45.890238429084
 lonT = 9.240239184
-
-pixel = haspr.get_pixel(latT, lonT)
-print(haspr.get_pixel_value(sisX, pixel[0], pixel[1], time))
-
+latT2 = 45.875
+lonT2 = 5.875
 
 
+#print(d.payload.sal.coords.get('time').values)
+
+to_return = salX.sel(lat=latT2, lon=lonT2, time=time).values
+
+print(to_return)
+
+pixel = haspr.get_pixel(latT2, lonT2, d.spatial_res)
 
 
+#print(d.payload.sal.coords.get('time').values)
+
+x = haspr.get_pixel_value(salX, latT, lonT, time, d.spatial_res)
+print(x)

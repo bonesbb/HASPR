@@ -7,29 +7,31 @@ from pysolar.solar import *
 import csv
 import xarray
 import datetime
+from datetime import datetime
+from datetime import timedelta
 import os
 from os import walk
 import tarfile
-import numpy
+import sys
 
 
 # GLOBAL VARIABLES
 outputText = []  # lines for output report
-results = []  # model results
-reportText = []  # output report
 models = []  # initialized collection of all available models
 loadedDataSets = []  # datasets which have been fetched
-temporalResolution = 0
-spatialResolution = 0
 coordinates = -1  # coordinates of interest (solar sites)
 sdp_developmentPhases = []
 sdp_transitionProbabilities = []
+usableSurface = 0
+sites = []
 
 
 # path variables
 sisDataPath = ""  # path to SIS dataset
 sisdDataPath = ""  # path to SIS direct dataset
 salDataPath = ""  # path to surface albedo dataset
+sisnDataPath = ""  # path to SIS normal dataset
+demDataPath = ""  # path to SwissGrid demand data
 outputDirectory = ""  # results and output directory
 
 
@@ -38,19 +40,28 @@ def initialize():
     # Available Datasets:
 
     # CM SAF SIS dataset
-    cmsaf_sis = Dataset("CMSAF_sis", coordinates)
+    cmsaf_sis = Dataset("CMSAF_sis")
+    cmsaf_sis.spatial_res = 0.05
+    cmsaf_sis.temporal_res = 30
 
     # CM SAF SIS direct dataset
-    cmsaf_sisd = Dataset("CMSAF_sisd", coordinates)
+    cmsaf_sisd = Dataset("CMSAF_sisd")
+    cmsaf_sisd.spatial_res = 0.05
+    cmsaf_sisd.temporal_res = 30
 
-    # CM SAF SIS normalized dataset
-    cmsaf_sisn = Dataset("CMSAF_sisn", coordinates)
+    # CM SAF SIS normal dataset
+    cmsaf_sisn = Dataset("CMSAF_sisn")
+    cmsaf_sisn.spatial_res = 0.05
+    cmsaf_sisn.temporal_res = 30
+
+    # CM SAF SAL dataset
+    cmsaf_sal = Dataset("CMSAF_sal")
+    cmsaf_sal.spatial_res = 0.25
+    cmsaf_sal.temporal_res = 0  # todo!!!
 
     # SwissGrid total CH demand dataset
-    swissgrid_demand_ch = Dataset("SwissGrid_demandCH", [])
-
-    # Swiss total hydro production dataset
-    swiss_hydro_output = Dataset("Swiss_hydro_output", [])
+    swissgrid_demand_ch = Dataset("SwissGrid_demandCH")
+    swissgrid_demand_ch.temporal_res = 15
 
     # Available Models:
 
@@ -58,24 +69,22 @@ def initialize():
     poa_sis = Model("SIS", [cmsaf_sis])
     models.append(poa_sis)
 
+    # SIS normal generation model
+    poa_normal = Model("SIS_normal", [cmsaf_sisn])
+    models.append(poa_normal)
+
+    # SIS_demand Swiss demand - total flat generation
+    sis_dem = Model("MAR_sis", [cmsaf_sis, swissgrid_demand_ch])
+    models.append(sis_dem)
+
     # POA_iso generation profiling model
-    poa_iso = Model("POA_iso", [cmsaf_sis, cmsaf_sisd, cmsaf_sisn])
+    poa_iso = Model("POA_iso", [cmsaf_sis, cmsaf_sisd, cmsaf_sal])
     models.append(poa_iso)
 
     # MAR_iso market match model
     mar_iso = Model("MAR_iso", [cmsaf_sis, cmsaf_sisd, cmsaf_sisn,
                                 swissgrid_demand_ch])
     models.append(mar_iso)
-
-    # Hydro_PV_balance model
-    hydro_pv_balance = Model("Hydro_PV_balance", [cmsaf_sis, cmsaf_sisd,
-                                                  cmsaf_sisn, swissgrid_demand_ch,
-                                                  swiss_hydro_output])
-    models.append(hydro_pv_balance)
-
-    # SDP - Solar Development Pipeline Models
-    sdp_ch = Model("SDP_ch", [sdp_developmentPhases, sdp_transitionProbabilities])
-    models.append(sdp_ch)
 
     return
 
@@ -89,7 +98,7 @@ class Model:
     def __init__(self, name, req_data):
         self.name = name
         self.req_data = req_data  # required datasets
-        self.timestep = temporalResolution  # model resolution in minutes
+        self.results = []
         self.data_loaded = False
 
     # method to check if required datasets have been loaded to ram
@@ -107,18 +116,24 @@ class Model:
             print("\nData check successful. Executing {} model run...".format(self.name))
             # switch on model name:
             if self.name == "SIS":
-                run_sis_model(self)
+                run_sis_model(self, False)
+                return
+            elif self.name == "SIS_normal":
+                run_sis_normal_model(self, False)
                 return
             elif self.name == "POA_iso":
                 run_poa_iso_model(self)
                 return
+            elif self.name == "SIS_demand":
+                run_sis_demand_model(self, False)
+                return
             else:
                 # warning that model is not implemented
-                print("\n[ERROR] {} model implementation not found - skipping model")
+                print("\n[ERROR] {} model implementation not found - skipping model".format(self.name))
                 return
         else:
             # warning user that data has not been loaded
-            print("\n[ERROR] Missing data - skipping model")
+            print("\n[ERROR] Missing data - skipping {} model".format(self.name))
         return
 
 
@@ -126,10 +141,11 @@ class Model:
 #   - defines a dataset
 class Dataset:
     # constructor
-    def __init__(self, name, coords):
+    def __init__(self, name):
         self.name = name
+        self.spatial_res = 0  # in degrees (1dim)
+        self.temporal_res = 0  # in minutes
         self.data_loaded = False
-        self.coordinates = coords
         self.variable = ""
         self.format = ""
         self.payload = []
@@ -138,9 +154,14 @@ class Dataset:
     def load_data(self):
         if self.name == "CMSAF_sis":
             load_netcdf_dataset(sisDataPath, self)
+        elif self.name == "SwissGrid_demandCH":
+            get_csv_data(demDataPath, self)
         elif self.name == "CMSAF_sisd":
-            # todo
-            return
+            load_netcdf_dataset(sisdDataPath, self)
+        elif self.name == "CMSAF_sisn":
+            load_netcdf_dataset(sisnDataPath, self)
+        elif self.name == "CMSAF_sal":
+            load_netcdf_dataset(salDataPath, self)
         else:
             # warning that dataset load is not implemented
             print("\n[ERROR] Missing {} Dataset Implementation...".format(self.name))
@@ -159,10 +180,29 @@ class Result:
         self.format = ""
         self.payload = []
 
-    # method to save the result to an output folder
+    # method to save the result as a CSV file to an output folder
     def dump(self):
-        # todo
+        # write CSV file
+        path = outputDirectory + "\\" + self.title + ".csv"
+        file = open(path, "w")
+
+        # write lines from payload:
+        for p in self.payload:
+            file.write(str(p) + "\n")
+        file.close()
+        print("\n -> '{}' csv file written to {}.".format(self.title, path))
         return
+
+
+# Site class
+#   - defines a potential energy plant site
+class Site:
+    # constructor
+    def __index__(self, title, coords, surface):
+        self.title = title
+        self.coords = coords
+        self.surfaceArea = surface
+
 
 # MAIN METHODS
 
@@ -199,8 +239,14 @@ def run_models(models_given):
 
 
 # dumps the simulation results to the local disk
-def dump_results():
-    # todo
+def dump_results(model_objects):
+    counter = 0
+    for m in model_objects:
+        print("Dumping results from {} model...".format(m.name))
+        for r in m.results:
+            r.dump()
+            counter = counter + 1
+    print("\n{} result objects dumped.".format(counter))
     return
 
 
@@ -209,12 +255,14 @@ def write_output_report():
     # todo
     return
 
+
 # MODEL FUNCTIONS
 
 
 # function to run SIS model
 # @model: SIS model object
-def run_sis_model(model):
+# @mode: True = embedded in another model, False = model of interest
+def run_sis_model(model, mode):
     # get SIS dataset payload:
     payload = model.req_data[0].payload
     payload = payload.SIS
@@ -222,26 +270,236 @@ def run_sis_model(model):
     time_array = payload.coords.get('time').values
     efficiency = get_efficiency(model)
 
-    coord = coordinates[0]
+    # initialize overview result (totals for each site):
+    overview_result = Result("SIS Flat Generation Overview")
+    overview_result.format = "CSV"
+    overview_result.payload.append("Site ID, Total SIS Flat Generation [Wh/m2], Winter SIS Flat Generation [Wh/m2],"
+                                   " Summer SIS Flat Generation [Wh/m2]")
 
-    # get pixel
-    pixel = get_pixel(coord[0], coord[1], spatialResolution)
+    coord_counter = 0
+    for c in coordinates:
+        coord_counter = coord_counter + 1
 
-    result = [['time', 'generation [W/m2]']]
+        # get pixel
+        pixel = get_pixel(c[0], c[1], model.req_data[0].spatial_res)
 
-    for t in time_array:
-        print("Calculating output at time = {}".format(t))
-        irradiation = get_pixel_value(payload, pixel[0], pixel[1], t, spatialResolution)
-        electricity_gen = efficiency*irradiation
-        result.append([t, electricity_gen])
+        # initialize current result (full generation profile):
+        current_result = Result("Site {} - SIS Flat Generation Model".format(coord_counter))
+        current_result.format = "CSV"
+        current_result.payload.append("Time, Generation [Wh/m2]")
 
-    # todo: use result class!
+        print("\n\nSite {} of {}:".format(coord_counter, len(coordinates)))
 
-    result = numpy.asarray(result)
-    output_path = outputDirectory + "\\sis results.csv"
-    os.makedirs(outputDirectory)
-    numpy.savetxt(output_path, result, fmt='%s', delimiter=",")
-    return
+        total_generation = 0
+        winter_total = 0
+        for t in time_array:
+            to_write = "Calculating output at time = {}".format(t)
+            time_sub = str(t)[0:10]
+            time_sub = time_sub.split('-')
+            month = time_sub[1]
+            is_winter = False
+            if int(month) < 5 or int(month) > 10:
+                is_winter = True
+            sys.stdout.write('\r' + str(to_write))
+            sys.stdout.flush()
+            irradiation = get_pixel_value(payload, pixel[0], pixel[1], t, model.req_data[0].spatial_res)
+            electricity_gen = efficiency*irradiation
+            energy_gen = electricity_gen * (float(model.req_data[0].temporal_res) / 60)  # we want Wh
+            str_to_write = str(t) + ", " + str(energy_gen)
+            current_result.payload.append(str_to_write)
+            if float(energy_gen) > 0:
+                total_generation = total_generation + float(energy_gen)
+                if is_winter:
+                    winter_total = winter_total + float(energy_gen)
+
+        summer_total = total_generation - winter_total
+
+        # build string for overview result:
+        overview_to_append = str(coord_counter) + ", "
+        overview_to_append = overview_to_append + str(total_generation) + ", "
+        overview_to_append = overview_to_append + str(winter_total) + ", "
+        overview_to_append = overview_to_append + str(summer_total)
+
+        overview_result.payload.append(overview_to_append)
+
+        total_text = "Site {} - Total SIS Flat Generation = {} Wh per m2".format(coord_counter, total_generation)
+        winter_text = " -> Winter SIS Flat Generation = {} Wh per m2".format(winter_total)
+        summer_text = " -> Summer SIS Flat Generation = {} Wh per m2".format(summer_total)
+
+        print("\n" + total_text)
+        print(winter_text)
+        print(summer_text)
+
+        # add current result to model:
+        model.results.append(current_result)
+
+    # add overview result to model:
+    model.results.append(overview_result)
+
+    if not mode:
+        # todo: note -> we can just return the result objects! (check if inner model results will be dumped...)
+        return []
+
+    return []
+
+
+# function to run SIS normal model
+# @model: SIS normal model object
+# @mode: True = embedded in another model, False = model of interest
+def run_sis_normal_model(model, mode):
+    # get SISn dataset payload:
+    payload = model.req_data[0].payload
+    payload = payload.DNI
+
+    time_array = payload.coords.get('time').values
+    efficiency = get_efficiency(model)
+
+    # initialize overview result (totals for each site):
+    overview_result = Result("SIS Normal Generation Overview")
+    overview_result.format = "CSV"
+    overview_result.payload.append("Site ID, Total SIS Normal Generation [Wh/m2], Winter SIS Normal Generation [Wh/m2],"
+                                   " Summer SIS Normal Generation [Wh/m2]")
+
+    coord_counter = 0
+    for c in coordinates:
+        coord_counter = coord_counter + 1
+
+        # get pixel
+        pixel = get_pixel(c[0], c[1], model.req_data[0].spatial_res)
+
+        # initialize current result (full generation profile):
+        current_result = Result("Site {} - SIS Normal Generation Model".format(coord_counter))
+        current_result.format = "CSV"
+        current_result.payload.append("Time, Generation [Wh/m2]")
+
+        print("\n\nSite {} of {}:".format(coord_counter, len(coordinates)))
+
+        total_generation = 0
+        winter_total = 0
+        for t in time_array:
+            to_write = "Calculating output at time = {}".format(t)
+            time_sub = str(t)[0:10]
+            time_sub = time_sub.split('-')
+            month = time_sub[1]
+            is_winter = False
+            if int(month) < 5 or int(month) > 10:
+                is_winter = True
+            sys.stdout.write('\r' + str(to_write))
+            sys.stdout.flush()
+            irradiation = get_pixel_value(payload, pixel[0], pixel[1], t, model.req_data[0].spatial_res)
+            electricity_gen = efficiency * irradiation
+            energy_gen = electricity_gen * (float(model.req_data[0].temporal_res) / 60)  # we want Wh
+            str_to_write = str(t) + ", " + str(energy_gen)
+            current_result.payload.append(str_to_write)
+            if float(energy_gen) > 0:
+                total_generation = total_generation + float(energy_gen)
+                if is_winter:
+                    winter_total = winter_total + float(energy_gen)
+
+        summer_total = total_generation - winter_total
+
+        # build string for overview result:
+        overview_to_append = str(coord_counter) + ", "
+        overview_to_append = overview_to_append + str(total_generation) + ", "
+        overview_to_append = overview_to_append + str(winter_total) + ", "
+        overview_to_append = overview_to_append + str(summer_total)
+
+        overview_result.payload.append(overview_to_append)
+
+        total_text = "Site {} - Total SIS Normal Generation = {} Wh per m2".format(coord_counter, total_generation)
+        winter_text = " -> Winter SIS Normal Generation = {} Wh per m2".format(winter_total)
+        summer_text = " -> Summer SIS Normal Generation = {} Wh per m2".format(summer_total)
+
+        print("\n" + total_text)
+        print(winter_text)
+        print(summer_text)
+
+        # add current result to model:
+        model.results.append(current_result)
+
+    # add overview result to model:
+    model.results.append(overview_result)
+
+    if not mode:
+        # todo: note -> we can just return the result objects! (check if inner model results will be dumped...)
+        return []
+
+    return []
+
+
+# function to run SIS demand model
+# @model: SIS demand model object
+# @mode: True = embedded in another model, False = model of interest
+def run_sis_demand_model(model, mode):
+    result = []
+    # get generation profile:
+    generation_profile = run_sis_model(model, False)
+
+    # get demand data:
+    payload = model.req_data[1].payload
+    time_array = []
+    demand_array = []
+    for p in payload:
+        time_array.append(p[0])
+        demand_array.append(p[1])
+
+    demand_filtered = []
+    index = 0
+
+    # filter out demand at generation profile resolution:
+    previous_demand = 0
+    for d in demand_array:
+        if index % 2 == 0:
+            total_interval_demand = float(d) + float(previous_demand)
+            demand_filtered.append(total_interval_demand)
+        previous_demand = d
+        index = index + 1
+
+    gp_count = 0
+    for gp in generation_profile:
+        gp_count = gp_count + 1
+        supplied = []
+        count = 0
+        total_supplied = 0
+        for d in demand_filtered:
+            demand_index = (2 * count) + 1
+
+            if demand_index >= len(time_array):
+                break
+
+            time_supplied = time_array[demand_index]
+            output_supplied = gp.payload[count]
+            output_supplied = output_supplied[1]
+
+            site = sites[gp_count - 1]
+            output_supplied = float(get_surface_area(site)) * float(output_supplied)
+
+            count = count + 1
+            d = float(d) / 1000
+            if float(d) >= float(output_supplied):
+                d = float(d) - float(output_supplied)
+                supplied.append([str(time_supplied), str(output_supplied)])
+                total_supplied = total_supplied + float(output_supplied)
+            elif float(output_supplied) > d and d > 0:
+                output_supplied = d
+                d = float(d) - float(output_supplied)
+                supplied.append([str(time_supplied), str(output_supplied)])
+                total_supplied = total_supplied + float(output_supplied)
+            else:
+                output_supplied = 0
+                supplied.append([str(time_supplied), str(output_supplied)])
+                total_supplied = total_supplied + float(output_supplied)
+
+        print("\nSite {} - Total Demand-Matched Supply = {} Wh per m2".format(gp_count, total_supplied))
+
+        # result object:
+        title = "Site {} - SIS Flat Demand-Matched Model".format(gp_count)
+        header = ["Time", "Supplied [Wh/m2]"]
+        result_object = Result(title, header)
+        result_object.payload = supplied
+        result.append(result_object)
+
+    return result
 
 
 # function to run POA_iso model
@@ -252,6 +510,66 @@ def run_poa_iso_model(model):
 
 
 # HELPER FUNCTIONS
+
+
+# function to get surface area of interest
+def get_surface_area(site):
+    return float(usableSurface) * float(site.surfaceArea)
+
+
+# function to get sites as objects
+def set_sites(path):
+    if path == "":
+        print("\n[WARNING]No path given for sites .csv file...")
+        return -2
+    else:
+        # read .csv file for coordinates of interest
+        csv_file_reader = csv.reader(open(path, "r"))
+        is_header = True
+        count = 0
+        for row in csv_file_reader:
+            count = count + 1
+            if is_header:
+                is_header = False
+                continue  # headers
+
+            surface_area = row[1]
+            this_site = Site()  # create site object without coords
+            this_site.surfaceArea = surface_area
+
+            sites.append(this_site)
+
+        return
+
+
+# function to write csv
+# @data: csv rows to write
+# @path: path to write to
+def write_csv(data, path):
+    with open(path, 'w') as writeFile:
+        writer = csv.writer(writeFile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        for d in data:
+            writer.writerow(d)
+        writeFile.close()
+    return
+
+
+# function to get an array of data from a csv file
+# @path: file path to the csv sheet
+# @return: array of csv data
+def get_csv_data(path, dataset):
+    to_return = []
+    csv_file_reader = csv.reader(open(path, "r"))
+    is_header = True
+    for row in csv_file_reader:
+        if is_header:
+            is_header = False
+            continue  # headers
+        to_return.append(row)
+
+    dataset.payload = to_return
+    return to_return
+
 
 # returns plane of array power received by one square meter of panel
 # todo
@@ -273,7 +591,7 @@ def get_poa(irradiance_array, solar_position, panel_normal_position, surface_alb
 # @model: model object in question
 # @return: efficiency in [0,1]
 def get_efficiency(model):
-    # todo
+    # todo - function of temperature?
     return 0.15  # 15% efficiency for now
 
 
@@ -328,7 +646,7 @@ def clean_input_coords(input_string):
 # @coord: coordinate in WGS 84 format (string)
 # @return: decimal coordinate
 def convert_to_decimal(coord):
-    # multiplier is negative is coordinate is S or W
+    # multiplier is negative if coordinate is S or W
     multiplier = 1
     if coord.endswith('S') or coord.endswith('W'):
         multiplier = -1
@@ -360,32 +678,15 @@ def get_solar_position(coords, timepoint):
 # @dataset: dataset object to which the data will be loaded
 def load_netcdf_dataset(path, dataset):
     full_dataset = xarray.open_dataset(path)
-    model_dataset = apply_coordinates(full_dataset, dataset.coordinates)
-    dataset.payload = model_dataset
+    dataset.payload = full_dataset
     dataset.format = "netCDF"
     print("\nPayload data set for {}.".format(dataset.name))
     return
 
 
-# function to get dataset for coordinates of interest
-# @data: Dataset to which the coords will be applied
-# @coords: Coordinates of interest (2dim array)
-# @return: Dataset which is the result of the coordinates transformation
-def apply_coordinates(data, coords):
-    # todo
-    return data
-
-
 # function to convert datetime64 string to datetime UTC
 def to_datetime_utc(timepoint):
     return datetime.datetime.utcfromtimestamp(timepoint.astype('O') / 1e9)
-
-
-# function to get all available models
-# @return: array of model objects
-def get_models():
-    # todo
-    return
 
 
 # function to get pixel value from netcdf - note: assumes spacial resolution of 0.05 degrees
@@ -402,7 +703,7 @@ def get_pixel_value(data, lat, lon, time, resolution):
     return float(to_return)
 
 
-# function to get coordinate pixel from any point on the grid (assuming resolution of 0.05deg)
+# function to get coordinate pixel from any point on the grid
 # @lat: latitude of point of interest
 # @lon: longitude of point of interest
 # @res: resolution in degrees (e.g. 0.05)
@@ -462,6 +763,91 @@ def get_associated_pixels(lat, lon, res):
     return to_return
 
 
+# function to get surface albedo for a given time by averaging values between 2005 and 2015
+# @dataset: surface albedo dataset to use
+# @lat: latitude of point of interest
+# @lon: longitude of point of interest
+# @return: average surface albedo for time of year (factor between 0 and 1)
+def get_avg_surface_albedo(dataset, lat, lon, time):
+
+    # get data for given coordinates:
+    sal_data = dataset.payload.sal
+    resolution_factor = dataset.spatial_res / 2  # e.g. 0.025 for 0.05deg resolution
+    lat_slice = slice(lat - resolution_factor, lat + resolution_factor)
+    lon_slice = slice(lon - resolution_factor, lon + resolution_factor)
+
+    sal_data_full = sal_data.sel(lat=lat_slice, lon=lon_slice)
+    sal_data_times = sal_data_full.coords.get('time').values
+
+    # match time given to available SAL values:
+    time_points_to_average = []
+    date_of_interest = get_date(time)
+    year_of_interest = date_of_interest[0]
+    month_of_interest = date_of_interest[1]
+    day_of_interest = date_of_interest[2]
+
+    date_string = year_of_interest + '-' + month_of_interest + '-' + day_of_interest
+    datetime_of_interest = datetime.strptime(date_string, '%Y-%m-%d')  # convert to datetime to allow for arithmetic!
+
+    # get all values for given day/month:
+    for t in sal_data_times:
+        date = get_date(str(t))
+        year = year_of_interest  # we want to match the dates to the year in question to allow for date arithmetic!
+        month = date[1]
+        day = date[2]
+
+        # get datetime object:
+        date_string = year + '-' + month + '-' + day
+        datetime_object = datetime.strptime(date_string, '%Y-%m-%d')
+
+        # SAL data is pentad (5 day):
+        match_array = [datetime_object]
+
+        for i in [1, 2, 3, 4]:
+            match_array.append(datetime_object + timedelta(days=i))
+
+        # check if date of interest is in our match array:
+        if match_array.__contains__(datetime_of_interest):
+            time_points_to_average.append(str(t))
+
+    # get average SAL from matched times:
+    current_sum = 0
+    counter = 0
+    for mt in time_points_to_average:
+        value = float(sal_data.sel(lat=lat_slice, lon=lon_slice, time=mt).values)
+
+        print("{} => SAL={}".format(mt, value))
+
+        # disregard 'nan's:
+        if value > 0:
+            current_sum = current_sum + value
+            counter = counter + 1
+
+    if counter > 0:
+        avg = current_sum / counter
+    else:
+        print("\n[ERROR] No available surface albedo values for {}, {}...".format(lat, lon))
+        sys.exit(-2)
+
+    # dataset values are in percent, we want absolute factor:
+    avg = avg / 100
+
+    return avg
+
+
+# function to get year, month, and day given a time
+# @time: time from which to get date
+# @return: [year, month, day] as array of strings
+def get_date(time):
+    split = time.split('T')
+    date = split[0]
+    split = date.split('-')
+    year = split[0]
+    month = split[1]
+    day = split[2]
+    return [year, month, day]
+
+
 # DATASCRAPE FUNCTIONS #
 
 # function to load a full dataset
@@ -469,7 +855,7 @@ def get_associated_pixels(lat, lon, res):
 # @path: file path of full netcdf data
 # @return: a new dataset with loaded netcdf as payload
 def load_netcdf(name, path):
-    dataset = Dataset(name, [])
+    dataset = Dataset(name)
     load_netcdf_dataset(path, dataset)
     return dataset
 
