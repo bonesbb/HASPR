@@ -1,6 +1,6 @@
 # HASPR - High-Altitude Solar Power Research
 # Script to process Surface Albedo data for POA model input
-# Version 0.1
+# Version 0.2
 # Author: neyring
 
 import haspr

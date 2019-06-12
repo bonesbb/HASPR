@@ -1,6 +1,6 @@
 # HASPR - High-Altitude Solar Power Research
 # Background script/library - classes, functions, algos
-# Version 0.1
+# Version 0.2
 # Author: neyring
 
 from pysolar.solar import *
