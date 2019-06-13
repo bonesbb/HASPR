@@ -1,6 +1,6 @@
 # HASPR - High-Altitude Solar Power Research
 # Background script/library - classes, functions, algos
-# Version 0.2
+# Version 0.3
 # Author: neyring
 
 from pysolar.solar import *
@@ -13,7 +13,8 @@ import os
 from os import walk
 import tarfile
 import sys
-
+import pytz
+import math
 
 # GLOBAL VARIABLES
 outputText = []  # lines for output report
@@ -39,25 +40,25 @@ outputDirectory = ""  # results and output directory
 def initialize():
     # Available Datasets:
 
-    # CM SAF SIS dataset
+    # CM SAF SIS dataset (global incoming on flat surface)
     cmsaf_sis = Dataset("CMSAF_sis")
     cmsaf_sis.spatial_res = 0.05
     cmsaf_sis.temporal_res = 30
 
-    # CM SAF SIS direct dataset
+    # CM SAF SIS direct dataset (direct incoming on flat surface)
     cmsaf_sisd = Dataset("CMSAF_sisd")
     cmsaf_sisd.spatial_res = 0.05
     cmsaf_sisd.temporal_res = 30
 
-    # CM SAF SIS normal dataset
+    # CM SAF SIS normal dataset (direct incoming on solar-normal surface)
     cmsaf_sisn = Dataset("CMSAF_sisn")
     cmsaf_sisn.spatial_res = 0.05
     cmsaf_sisn.temporal_res = 30
 
-    # CM SAF SAL dataset
+    # CM SAF SAL dataset (surface albedo as percentage)
     cmsaf_sal = Dataset("CMSAF_sal")
     cmsaf_sal.spatial_res = 0.25
-    cmsaf_sal.temporal_res = 0  # todo!!!
+    cmsaf_sal.temporal_res = 7200  # 5 days
 
     # SwissGrid total CH demand dataset
     swissgrid_demand_ch = Dataset("SwissGrid_demandCH")
@@ -69,8 +70,8 @@ def initialize():
     poa_sis = Model("SIS", [cmsaf_sis])
     models.append(poa_sis)
 
-    # SIS normal generation model
-    poa_normal = Model("SIS_normal", [cmsaf_sisn])
+    # SIS normal generation model (solar tracking)
+    poa_normal = Model("SIS_normal", [cmsaf_sis, cmsaf_sisd, cmsaf_sal])
     models.append(poa_normal)
 
     # SIS_demand Swiss demand - total flat generation
@@ -273,8 +274,8 @@ def run_sis_model(model, mode):
     # initialize overview result (totals for each site):
     overview_result = Result("SIS Flat Generation Overview")
     overview_result.format = "CSV"
-    overview_result.payload.append("Site ID, Total SIS Flat Generation [Wh/m2], Winter SIS Flat Generation [Wh/m2],"
-                                   " Summer SIS Flat Generation [Wh/m2]")
+    overview_result.payload.append("Site ID, Latitude (decimal), Longitude (decimal), Total SIS Flat Generation [Wh/m2]"
+                                   ", Winter SIS Flat Generation [Wh/m2],Summer SIS Flat Generation [Wh/m2]")
 
     coord_counter = 0
     for c in coordinates:
@@ -294,14 +295,14 @@ def run_sis_model(model, mode):
         winter_total = 0
         for t in time_array:
             to_write = "Calculating output at time = {}".format(t)
+            sys.stdout.write('\r' + str(to_write))
+            sys.stdout.flush()
             time_sub = str(t)[0:10]
             time_sub = time_sub.split('-')
             month = time_sub[1]
             is_winter = False
             if int(month) < 5 or int(month) > 10:
                 is_winter = True
-            sys.stdout.write('\r' + str(to_write))
-            sys.stdout.flush()
             irradiation = get_pixel_value(payload, pixel[0], pixel[1], t, model.req_data[0].spatial_res)
             electricity_gen = efficiency*irradiation
             energy_gen = electricity_gen * (float(model.req_data[0].temporal_res) / 60)  # we want Wh
@@ -316,6 +317,8 @@ def run_sis_model(model, mode):
 
         # build string for overview result:
         overview_to_append = str(coord_counter) + ", "
+        overview_to_append = overview_to_append + str(c[0]) + ", "
+        overview_to_append = overview_to_append + str(c[1]) + ", "
         overview_to_append = overview_to_append + str(total_generation) + ", "
         overview_to_append = overview_to_append + str(winter_total) + ", "
         overview_to_append = overview_to_append + str(summer_total)
@@ -347,28 +350,24 @@ def run_sis_model(model, mode):
 # @model: SIS normal model object
 # @mode: True = embedded in another model, False = model of interest
 def run_sis_normal_model(model, mode):
-    # get SISn dataset payload:
+    # get time array
     payload = model.req_data[0].payload
-    payload = payload.DNI
-
+    payload = payload.SIS
     time_array = payload.coords.get('time').values
-    efficiency = get_efficiency(model)
 
     # initialize overview result (totals for each site):
-    overview_result = Result("SIS Normal Generation Overview")
+    overview_result = Result("SIS Full Tracking Generation Overview")
     overview_result.format = "CSV"
-    overview_result.payload.append("Site ID, Total SIS Normal Generation [Wh/m2], Winter SIS Normal Generation [Wh/m2],"
-                                   " Summer SIS Normal Generation [Wh/m2]")
+    overview_result.payload.append("Site ID, Latitude (decimal), Longitude (decimal) ,Total SIS Full Tracking"
+                                   " Generation [Wh/m2], Winter SIS Full Tracking Generation [Wh/m2],"
+                                   " Summer SIS Full Tracking Generation [Wh/m2]")
 
     coord_counter = 0
     for c in coordinates:
         coord_counter = coord_counter + 1
 
-        # get pixel
-        pixel = get_pixel(c[0], c[1], model.req_data[0].spatial_res)
-
         # initialize current result (full generation profile):
-        current_result = Result("Site {} - SIS Normal Generation Model".format(coord_counter))
+        current_result = Result("Site {} - SIS Full Tracking Generation Model".format(coord_counter))
         current_result.format = "CSV"
         current_result.payload.append("Time, Generation [Wh/m2]")
 
@@ -378,19 +377,42 @@ def run_sis_normal_model(model, mode):
         winter_total = 0
         for t in time_array:
             to_write = "Calculating output at time = {}".format(t)
+            sys.stdout.write('\r' + str(to_write))
+            sys.stdout.flush()
             time_sub = str(t)[0:10]
             time_sub = time_sub.split('-')
             month = time_sub[1]
             is_winter = False
             if int(month) < 5 or int(month) > 10:
                 is_winter = True
-            sys.stdout.write('\r' + str(to_write))
-            sys.stdout.flush()
-            irradiation = get_pixel_value(payload, pixel[0], pixel[1], t, model.req_data[0].spatial_res)
+
+            # get panel azimuth and tilt to track the sun:
+            dt_time = to_datetime_utc(t)
+            timezone = pytz.utc
+            time_aware = timezone.localize(dt_time)
+
+            solar_position = get_solar_position(c, time_aware)
+
+            panel_azimuth = solar_position[1]  # equals solar azimuth
+            panel_tilt = 90 - solar_position[0]  # equals 90 - solar altitude
+            panel_position = [panel_tilt, panel_azimuth]
+
+            # get surface albedo:
+            sal_data = model.req_data[2]
+            surface_albedo = get_avg_surface_albedo(sal_data, c[0], c[1], t)
+
+            # get harnessed irradiation:
+            irradiation_data = [model.req_data[0], model.req_data[1]]  # [SIS, SISd]
+            irradiation = get_poa(c, t, irradiation_data, surface_albedo, solar_position, panel_position)
+
+            # get energy generated:
+            efficiency = get_efficiency(model)
             electricity_gen = efficiency * irradiation
             energy_gen = electricity_gen * (float(model.req_data[0].temporal_res) / 60)  # we want Wh
+
             str_to_write = str(t) + ", " + str(energy_gen)
             current_result.payload.append(str_to_write)
+
             if float(energy_gen) > 0:
                 total_generation = total_generation + float(energy_gen)
                 if is_winter:
@@ -400,15 +422,17 @@ def run_sis_normal_model(model, mode):
 
         # build string for overview result:
         overview_to_append = str(coord_counter) + ", "
+        overview_to_append = overview_to_append + str(c[0]) + ", "
+        overview_to_append = overview_to_append + str(c[1]) + ", "
         overview_to_append = overview_to_append + str(total_generation) + ", "
         overview_to_append = overview_to_append + str(winter_total) + ", "
         overview_to_append = overview_to_append + str(summer_total)
 
         overview_result.payload.append(overview_to_append)
 
-        total_text = "Site {} - Total SIS Normal Generation = {} Wh per m2".format(coord_counter, total_generation)
-        winter_text = " -> Winter SIS Normal Generation = {} Wh per m2".format(winter_total)
-        summer_text = " -> Summer SIS Normal Generation = {} Wh per m2".format(summer_total)
+        total_text = "Site {} - Total SIS Full Tracking Generation = {} Wh per m2".format(coord_counter, total_generation)
+        winter_text = " -> Winter SIS Full Tracking Generation = {} Wh per m2".format(winter_total)
+        summer_text = " -> Summer SIS Full Tracking Generation = {} Wh per m2".format(summer_total)
 
         print("\n" + total_text)
         print(winter_text)
@@ -571,20 +595,55 @@ def get_csv_data(path, dataset):
     return to_return
 
 
-# returns plane of array power received by one square meter of panel
-# todo
-def get_poa(irradiance_array, solar_position, panel_normal_position, surface_albedo):
-    # todo: implement plane of array
-    # get diffuse radiation:
-    # sisdiff = sis - sisd
+# returns plane of array power received by one square meter of panel at given coordinates and time
+# @coords: coordinates of interest [lat, lon]
+# @time: time of interest
+# @irradiation_array: [SIS, SISd] datasets
+# @surface_albedo: surface albedo to use
+# @solar_position: [solar altitude, solar azimuth]
+# @panel_position: [panel_tilt, panel_azimuth]
+def get_poa(coords, time, irradiation_array, surface_albedo, solar_position, panel_position):
+    # get necessary values from datasets:
+    resolution = irradiation_array[0].spatial_res
+    sis_data = irradiation_array[0].payload.SIS
+    sisd_data = irradiation_array[1].payload.SID
 
-    # calculate angle between solar_position and panel_normal position:
-    # todo
+    pixel = get_pixel(coords[0], coords[1], resolution)
 
-    # plug values into formula:
-    # todo
+    sis = get_pixel_value(sis_data, pixel[0], pixel[1], time, resolution)
+    sis_d = get_pixel_value(sisd_data, pixel[0], pixel[1], time, resolution)
+    sis_diff = sis - sis_d
 
-    return -1
+    # get angles in radians:
+    solar_zenith_angle = math.radians(90 - solar_position[0])  # SZA = 90 - altitude
+    solar_az = math.radians(solar_position[1])
+
+    panel_tilt = math.radians(panel_position[0])
+    panel_az = math.radians(panel_position[1])
+
+    # calculate cosine of angle between solar_position and panel_normal position:
+    c1 = math.sin(solar_zenith_angle) * math.cos(solar_az) * math.sin(panel_tilt) * math.cos(panel_az)
+    c2 = math.sin(solar_zenith_angle) * math.sin(solar_az) * math.sin(panel_tilt) * math.sin(panel_az)
+    c3 = math.cos(solar_zenith_angle) * math.cos(panel_tilt)
+
+    cos_alpha = c1 + c2 + c3
+
+    # direct beam component:
+    beam_component = 0
+    if solar_position[0] > 0:  # we only have a direct beam component if the solar altitude is above 0 degrees (horizon)
+        beam_component = cos_alpha * sis_d / math.cos(solar_zenith_angle)
+
+    # diffuse component:
+    sky_view_factor = (1 + math.cos(panel_tilt)) / 2
+    diffuse_component = sis_diff * sky_view_factor
+
+    # ground-reflected component:
+    ground_view_factor = (1 - math.cos(panel_tilt)) / 2
+    ground_component = sis * surface_albedo * ground_view_factor
+
+    # return sum of all components:
+    total_poa = beam_component + diffuse_component + ground_component
+    return total_poa
 
 
 # returns efficiency of the system based on the given model
@@ -666,7 +725,7 @@ def convert_to_decimal(coord):
 # function to get solar position for given coordinates and datetime (via pysolar library SPA)
 # @coords: array of length two -> index 0 = latitude (decimal), index 1 = longitude (decimal)
 # @timepoint: datetime in UTC
-# @return: array of solar altitude and solar position
+# @return: array of [solar altitude, solar position]
 def get_solar_position(coords, timepoint):
     solar_alt = get_altitude(coords[0], coords[1], timepoint)
     solar_az = get_azimuth(coords[0], coords[1], timepoint)
@@ -686,7 +745,7 @@ def load_netcdf_dataset(path, dataset):
 
 # function to convert datetime64 string to datetime UTC
 def to_datetime_utc(timepoint):
-    return datetime.datetime.utcfromtimestamp(timepoint.astype('O') / 1e9)
+    return datetime.utcfromtimestamp(timepoint.astype('O') / 1e9)
 
 
 # function to get pixel value from netcdf - note: assumes spacial resolution of 0.05 degrees
@@ -816,8 +875,6 @@ def get_avg_surface_albedo(dataset, lat, lon, time):
     for mt in time_points_to_average:
         value = float(sal_data.sel(lat=lat_slice, lon=lon_slice, time=mt).values)
 
-        print("{} => SAL={}".format(mt, value))
-
         # disregard 'nan's:
         if value > 0:
             current_sum = current_sum + value
@@ -826,8 +883,8 @@ def get_avg_surface_albedo(dataset, lat, lon, time):
     if counter > 0:
         avg = current_sum / counter
     else:
-        print("\n[ERROR] No available surface albedo values for {}, {}...".format(lat, lon))
-        sys.exit(-2)
+        print("\n[WARNING] No available surface albedo values for {}, {} at time {}".format(lat, lon, time))
+        return 0
 
     # dataset values are in percent, we want absolute factor:
     avg = avg / 100
@@ -839,6 +896,7 @@ def get_avg_surface_albedo(dataset, lat, lon, time):
 # @time: time from which to get date
 # @return: [year, month, day] as array of strings
 def get_date(time):
+    time = str(time)
     split = time.split('T')
     date = split[0]
     split = date.split('-')

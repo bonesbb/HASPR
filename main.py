@@ -1,6 +1,6 @@
 # HASPR - High-Altitude Solar Power Research
 # Main script - set parameters, run models, and dump data
-# Version 0.2
+# Version 0.3
 # Author: neyring
 
 import datetime
@@ -9,7 +9,7 @@ import haspr
 
 # PARAMETERS #
 
-modelsToRun = ["SIS"]
+modelsToRun = ["SIS_normal"]
 haspr.usableSurface = 0.4  # fraction of water body surface area which can be used
 haspr.set_coordinates("D:\\coordinates of interest.csv")  # .csv file path of coordinates
 haspr.set_sites("D:\\sites.csv")  # .csv file path of sites (incl. surface area)
@@ -79,4 +79,9 @@ print(consoleBreak)
 dateFinish = datetime.datetime.now(pytz.utc)
 
 print("HASPR successfully terminated at {} UTC".format(dateFinish))
+
+run_time = dateFinish - dateStart
+
+print(" -> total runtime = {}".format(run_time))
+
 print(consoleBreak)
