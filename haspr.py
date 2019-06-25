@@ -1,6 +1,6 @@
 # HASPR - High-Altitude Solar Power Research
 # Background script/library - classes, functions, algos
-# Version 0.3
+# Version 0.4
 # Author: neyring
 
 from pysolar.solar import *
@@ -70,15 +70,24 @@ def initialize():
     poa_sis = Model("SIS", [cmsaf_sis])
     models.append(poa_sis)
 
-    # SIS normal generation model (solar tracking)
-    poa_normal = Model("SIS_normal", [cmsaf_sis, cmsaf_sisd, cmsaf_sal])
+    # POA normal generation model (solar tracking)
+    poa_normal = Model("POA_normal", [cmsaf_sis, cmsaf_sisd, cmsaf_sal])
     models.append(poa_normal)
+
+    # POA yearly optimized fixed position model
+    # todo
+
+    # POA winter optimized fixed position model
+    # todo
+
+    # POA summer optimized fixed position model
+    # todo
 
     # SIS_demand Swiss demand - total flat generation
     sis_dem = Model("MAR_sis", [cmsaf_sis, swissgrid_demand_ch])
     models.append(sis_dem)
 
-    # POA_iso generation profiling model
+    # POA_fixed generation profiling model - fixed position optimization
     poa_iso = Model("POA_iso", [cmsaf_sis, cmsaf_sisd, cmsaf_sal])
     models.append(poa_iso)
 
@@ -119,8 +128,8 @@ class Model:
             if self.name == "SIS":
                 run_sis_model(self, False)
                 return
-            elif self.name == "SIS_normal":
-                run_sis_normal_model(self, False)
+            elif self.name == "POA_normal":
+                run_poa_normal_model(self, False)
                 return
             elif self.name == "POA_iso":
                 run_poa_iso_model(self)
@@ -180,11 +189,12 @@ class Result:
         self.title = title
         self.format = ""
         self.payload = []
+        self.output_directory = outputDirectory
 
     # method to save the result as a CSV file to an output folder
     def dump(self):
         # write CSV file
-        path = outputDirectory + "\\" + self.title + ".csv"
+        path = self.output_directory + "\\" + self.title + ".csv"
         file = open(path, "w")
 
         # write lines from payload:
@@ -349,7 +359,7 @@ def run_sis_model(model, mode):
 # function to run SIS normal model
 # @model: SIS normal model object
 # @mode: True = embedded in another model, False = model of interest
-def run_sis_normal_model(model, mode):
+def run_poa_normal_model(model, mode):
     # get time array
     payload = model.req_data[0].payload
     payload = payload.SIS
@@ -904,6 +914,74 @@ def get_date(time):
     month = split[1]
     day = split[2]
     return [year, month, day]
+
+
+# ANALYSIS FUNCTIONS #
+
+# function to get total sum of generation profiles given a group of individual profiles
+# @title: title of the Result to return
+# @input_path: file path of the directory containing HASPR generation profiles (CSVs)
+# @output_path: file path of output directory (needs to be created by user beforehand)
+# @return: result object containing total generation profile (Wh vs. time)
+def get_total_profiles(title, input_path, output_path):
+    # get all file names in input_directory:
+    file_names = []
+    for (dirpath, dirnames, filenames) in walk(input_path):
+        file_names.extend(filenames)
+
+    print("\nCalculating total generation profile for {} sites...".format(len(file_names)))
+
+    datasets = []
+
+    # extract data from CSV files to Dataset objects:
+    for fn in file_names:
+        print("   -> Extracting data from {}".format(fn))
+        d = Dataset("")
+        file_path = input_path + "\\" + fn
+        get_csv_data(file_path, d)
+        datasets.append(d)
+
+    print("\nProfile data extracted!")
+
+    # initialize output:
+    total_profiles = datasets[0].payload
+
+    # add the rest of the profiles one by one:
+    counter = 0
+    for d_i in datasets[1:]:
+        counter = counter + 1
+        print("\n-> Summing values for site {}".format(counter))
+        current_payload = d_i.payload
+        for i in range(len(current_payload)):
+            data_point = current_payload[i]
+            gen_value = float(data_point[1])
+            point_to_sum = (total_profiles[i])[1]
+            # set nan's to zero
+            if not float(point_to_sum) > 0:
+                point_to_sum = 0
+            # disregard new nan's
+            if not float(gen_value) > 0:
+                gen_value = 0
+            new_value = float(point_to_sum) + float(gen_value)
+            (total_profiles[i])[1] = str(new_value)
+
+    print("\nBuilding result...")
+
+    r = Result(title)
+    r.format = "CSV"
+    r.output_directory = output_path
+    header = 'Time, Total Production [Wh/m2]'
+    r.payload.append(header)
+
+    for tp in total_profiles:
+        time_string = str(tp[0])
+        gen_string = str(tp[1])
+        new_string = time_string + ', ' + gen_string
+        r.payload.append(new_string)
+
+    print("\nTotal profile result complete.")
+
+    return r
 
 
 # DATASCRAPE FUNCTIONS #
