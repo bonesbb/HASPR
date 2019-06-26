@@ -1,6 +1,6 @@
 # HASPR - High-Altitude Solar Power Research
-# Main script - set parameters, run models, and dump data
-# Version 0.4
+# Main script for Euler - set parameters, run models, and dump data
+# Version 0.3
 # Author: neyring
 
 import datetime
@@ -10,24 +10,24 @@ import haspr
 # PARAMETERS #
 
 modelsToRun = ["POA_fixed"]
-haspr.osPathDelimiter = "\\"
+haspr.osPathDelimiter = "/"
 haspr.usableSurface = 0.4  # fraction of water body surface area which can be used
 haspr.fixedPanelSweepIncrement = 90  # in degrees
 haspr.set_coordinates("/cluster/home/neyring/coordinates of interest2.csv")  # .csv file path of coordinates
-haspr.set_sites("D:\\sites.csv")  # .csv file path of sites (incl. surface area)
-haspr.sisDataPath = "D:\\POA Datasets\\00_2017_SIS_merged.nc"  # path to SIS dataset
-haspr.sisdDataPath = "D:\\POA Datasets\\01_2017_SIS_direct_merged.nc"  # path to SIS direct dataset
-haspr.salDataPath = "D:\\POA Datasets\\02_SAL_merged.nc"  # path to surface albedo dataset
-haspr.sisnDataPath = "D:\\POA Datasets\\03_2017_SIS_normal_merged.nc"  # path to SIS normal dataset
-haspr.demDataPath = "D:\\swiss_dem_2018.csv"  # path to SwissGrid demand data
-haspr.generationProfilesDirectory = "D:\\HASPR Flat Output\\Flat Generation Profiles"  # path to gen. profiles directory
+#haspr.set_sites("D:\\sites.csv")  # .csv file path of sites (incl. surface area)
+haspr.sisDataPath = "/cluster/home/neyring/00_2017_SIS_merged.nc"  # path to SIS dataset
+haspr.sisdDataPath = "/cluster/home/neyring/01_2017_SIS_direct_merged.nc"  # path to SIS direct dataset
+haspr.salDataPath = "/cluster/home/neyring/02_SAL_merged.nc"  # path to surface albedo dataset
+#haspr.sisnDataPath = "D:\\POA Datasets\\03_2017_SIS_normal_merged.nc"  # path to SIS normal dataset
+#haspr.demDataPath = "D:\\swiss_dem_2018.csv"  # path to SwissGrid demand data
+#haspr.generationProfilesDirectory = "D:\\HASPR Flat Output\\Flat Generation Profiles"  # path to gen. profiles directory
 
 # solar development pipeline parameters:
 haspr.sdp_developmentPhases = ["Proposal", "Term Sheet", "Negotiation", "PPA"]
 haspr.sdp_transitionProbabilities = [0.05, 0.3, 0.5, 0.75]
 
 generateOutputReport = False
-haspr.outputDirectory = "D:\\HASPR Output"  # results and output directory
+haspr.outputDirectory = "/cluster/home/neyring/HASPR Output"  # results and output directory
 outputTime = "UTC"  # set to "UTC" or "LOCAL" (limited functionality for local time)
 consoleBreak = "\n***************************************************************************\n"
 
