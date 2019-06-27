@@ -10,10 +10,13 @@ import haspr
 # PARAMETERS #
 
 modelsToRun = ["POA_fixed"]
+fullFixedPanelSweepRange = haspr.get_full_fixed_panel_sweep_range()
+fixedPanelSweepBatches = haspr.get_sweep_batches(fullFixedPanelSweepRange, 20)  # we want to run  20 at a time
+haspr.currentFixedPanelSweepRange = fixedPanelSweepBatches[3]  # set the sweep range
 haspr.osPathDelimiter = "/"
 haspr.usableSurface = 0.4  # fraction of water body surface area which can be used
-haspr.fixedPanelSweepIncrement = 90  # in degrees
-haspr.set_coordinates("/cluster/home/neyring/coordinates of interest2.csv")  # .csv file path of coordinates
+haspr.fixedPanelSweepIncrement = 10  # in degrees
+haspr.set_coordinates("/cluster/home/neyring/coordinates of interest - site1.csv")  # .csv file path of coordinates
 #haspr.set_sites("D:\\sites.csv")  # .csv file path of sites (incl. surface area)
 haspr.sisDataPath = "/cluster/home/neyring/00_2017_SIS_merged.nc"  # path to SIS dataset
 haspr.sisdDataPath = "/cluster/home/neyring/01_2017_SIS_direct_merged.nc"  # path to SIS direct dataset

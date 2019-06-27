@@ -12,7 +12,7 @@ import haspr
 modelsToRun = ["POA_fixed"]
 haspr.osPathDelimiter = "\\"
 haspr.usableSurface = 0.4  # fraction of water body surface area which can be used
-haspr.fixedPanelSweepIncrement = 90  # in degrees
+haspr.fixedPanelSweepIncrement = 5  # in degrees
 haspr.set_coordinates("/cluster/home/neyring/coordinates of interest2.csv")  # .csv file path of coordinates
 haspr.set_sites("D:\\sites.csv")  # .csv file path of sites (incl. surface area)
 haspr.sisDataPath = "D:\\POA Datasets\\00_2017_SIS_merged.nc"  # path to SIS dataset
