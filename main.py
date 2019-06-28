@@ -1,6 +1,6 @@
 # HASPR - High-Altitude Solar Power Research
 # Main script - set parameters, run models, and dump data
-# Version 0.4
+# Version 0.5
 # Author: neyring
 
 import datetime

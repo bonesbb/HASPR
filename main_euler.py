@@ -1,22 +1,31 @@
 # HASPR - High-Altitude Solar Power Research
 # Main script for Euler - set parameters, run models, and dump data
-# Version 0.3
+# Version 0.4
 # Author: neyring
 
 import datetime
 import pytz
 import haspr
+import sys
 
 # PARAMETERS #
 
 modelsToRun = ["POA_fixed"]
 fullFixedPanelSweepRange = haspr.get_full_fixed_panel_sweep_range()
 fixedPanelSweepBatches = haspr.get_sweep_batches(fullFixedPanelSweepRange, 20)  # we want to run  20 at a time
-haspr.currentFixedPanelSweepRange = fixedPanelSweepBatches[3]  # set the sweep range
+haspr.currentFixedPanelSweepRange = fixedPanelSweepBatches[0]  # set the sweep range
+#haspr.set_coordinates("/cluster/home/neyring/coordinates of interest - site2.csv")  # .csv file path of coordinates
+
+# add command line functionality:
+if len(sys.argv) > 1:
+    haspr.currentFixedPanelSweepRange = fixedPanelSweepBatches[int(sys.argv[1])]
+
+if len(sys.argv) > 2:
+    haspr.set_coordinates(sys.argv[2])
+
 haspr.osPathDelimiter = "/"
 haspr.usableSurface = 0.4  # fraction of water body surface area which can be used
 haspr.fixedPanelSweepIncrement = 10  # in degrees
-haspr.set_coordinates("/cluster/home/neyring/coordinates of interest - site1.csv")  # .csv file path of coordinates
 #haspr.set_sites("D:\\sites.csv")  # .csv file path of sites (incl. surface area)
 haspr.sisDataPath = "/cluster/home/neyring/00_2017_SIS_merged.nc"  # path to SIS dataset
 haspr.sisdDataPath = "/cluster/home/neyring/01_2017_SIS_direct_merged.nc"  # path to SIS direct dataset

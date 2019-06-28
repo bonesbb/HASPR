@@ -1,6 +1,6 @@
 # HASPR - High-Altitude Solar Power Research
 # Background script/library - classes, functions, algos
-# Version 0.5.1
+# Version 0.6
 # Author: neyring
 
 from pysolar.solar import *
@@ -298,7 +298,7 @@ def run_sis_model(model):
         pixel = get_pixel(c[0], c[1], model.req_data[0].spatial_res)
 
         # initialize current result (full generation profile):
-        current_result = Result("Site {} - SIS Flat Generation Model".format(coord_counter))
+        current_result = Result("Site {} - SIS Flat Generation Model".format(c[2]))
         current_result.format = "CSV"
         current_result.payload.append("Time, Generation [Wh/m2]")
 
@@ -338,7 +338,7 @@ def run_sis_model(model):
 
         overview_result.payload.append(overview_to_append)
 
-        total_text = "Site {} - Total SIS Flat Generation = {} Wh per m2".format(coord_counter, total_generation)
+        total_text = "Site {} - Total SIS Flat Generation = {} Wh per m2".format(c[2], total_generation)
         winter_text = " -> Winter SIS Flat Generation = {} Wh per m2".format(winter_total)
         summer_text = " -> Summer SIS Flat Generation = {} Wh per m2".format(summer_total)
 
@@ -376,7 +376,7 @@ def run_poa_normal_model(model):
         coord_counter = coord_counter + 1
 
         # initialize current result (full generation profile):
-        current_result = Result("Site {} - SIS Full Tracking Generation Model".format(coord_counter))
+        current_result = Result("Site {} - SIS Full Tracking Generation Model".format(c[2]))
         current_result.format = "CSV"
         current_result.payload.append("Time, Generation [Wh/m2]")
 
@@ -439,7 +439,7 @@ def run_poa_normal_model(model):
 
         overview_result.payload.append(overview_to_append)
 
-        total_text = "Site {} - Total SIS Full Tracking Generation = {} Wh per m2".format(coord_counter, total_generation)
+        total_text = "Site {} - Total SIS Full Tracking Generation = {} Wh per m2".format(c[2], total_generation)
         winter_text = " -> Winter SIS Full Tracking Generation = {} Wh per m2".format(winter_total)
         summer_text = " -> Summer SIS Full Tracking Generation = {} Wh per m2".format(summer_total)
 
@@ -486,7 +486,7 @@ def run_poa_fixed_model(model):
             coord_counter = coord_counter + 1
 
             # initialize current result (full generation profile):
-            current_result = Result("{}-{} Site {} - Fixed Generation Model".format(az, tilt, coord_counter))
+            current_result = Result("{}-{} Site {} - Fixed Generation Model".format(az, tilt, c[2]))
             current_result.format = "CSV"
             current_result.payload.append("Time, Generation [Wh/m2]")
 
@@ -548,7 +548,7 @@ def run_poa_fixed_model(model):
             overview_result.payload.append(overview_to_append)
 
             total_text = "{}-{} Site {} - Total SIS Full Tracking Generation = {} Wh/m2".format(az, tilt,
-                                                                                                coord_counter,
+                                                                                                c[2],
                                                                                                 total_generation)
             winter_text = " -> Winter SIS Full Tracking Generation = {} Wh/m2".format(winter_total)
             summer_text = " -> Summer SIS Full Tracking Generation = {} Wh/m2".format(summer_total)
@@ -798,12 +798,13 @@ def get_coordinates(path):
 
             # clean input
             row[1] = clean_input_coords(row[1])
+            site_id = row[0]
 
             string_coords = row[1].split(" ")
 
             lat_decimal = convert_to_decimal(string_coords[0])
             long_decimal = convert_to_decimal(string_coords[1])
-            extracted_coord = [lat_decimal, long_decimal]
+            extracted_coord = [lat_decimal, long_decimal, site_id]
             to_return.append(extracted_coord)
         return to_return
 
