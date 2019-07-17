@@ -1,6 +1,6 @@
 # HASPR - High-Altitude Solar Power Research
 # Background script/library - classes, functions, algos
-# Version 0.6
+# Version 0.7
 # Author: neyring
 
 from pysolar.solar import *
@@ -27,6 +27,8 @@ usableSurface = 0  # fraction of water body surface area which can be used
 currentFixedPanelSweepRange = []  # array of [az, tilt] values to sweep in current model
 fixedPanelSweepIncrement = 10  # in degrees
 sites = []
+poaBreakdownValues = []  # used to analyse the contribution of the 3 components in POA models
+nanCounter = [0, 0]  # used to add the number of NANs to each output report. Format = [#irradianceNAN, #salNANs]
 
 
 # path variables
@@ -288,11 +290,16 @@ def run_sis_model(model):
     overview_result = Result("SIS Flat Generation Overview")
     overview_result.format = "CSV"
     overview_result.payload.append("Site ID, Latitude (decimal), Longitude (decimal), Total SIS Flat Generation [Wh/m2]"
-                                   ", Winter SIS Flat Generation [Wh/m2],Summer SIS Flat Generation [Wh/m2]")
+                                   ", Winter SIS Flat Generation [Wh/m2], Summer SIS Flat Generation [Wh/m2], "
+                                   "# SIS NANs")
 
     coord_counter = 0
     for c in coordinates:
         coord_counter = coord_counter + 1
+
+        # reset NAN counter:
+        global nanCounter
+        nanCounter = [0, 0]
 
         # get pixel
         pixel = get_pixel(c[0], c[1], model.req_data[0].spatial_res)
@@ -334,7 +341,8 @@ def run_sis_model(model):
         overview_to_append = overview_to_append + str(c[1]) + ", "
         overview_to_append = overview_to_append + str(total_generation) + ", "
         overview_to_append = overview_to_append + str(winter_total) + ", "
-        overview_to_append = overview_to_append + str(summer_total)
+        overview_to_append = overview_to_append + str(summer_total) + ", "
+        overview_to_append = overview_to_append + str(nanCounter[0])
 
         overview_result.payload.append(overview_to_append)
 
@@ -367,18 +375,30 @@ def run_poa_normal_model(model):
     # initialize overview result (totals for each site):
     overview_result = Result("SIS Full Tracking Generation Overview")
     overview_result.format = "CSV"
-    overview_result.payload.append("Site ID, Latitude (decimal), Longitude (decimal) ,Total SIS Full Tracking"
+    overview_result.payload.append("Site ID, Latitude (decimal), Longitude (decimal), Total SIS Full Tracking"
                                    " Generation [Wh/m2], Winter SIS Full Tracking Generation [Wh/m2],"
-                                   " Summer SIS Full Tracking Generation [Wh/m2]")
+                                   " Summer SIS Full Tracking Generation [Wh/m2], # Irradiation NANs,"
+                                   " # Surface Albedo NANs")
 
     coord_counter = 0
     for c in coordinates:
         coord_counter = coord_counter + 1
 
+        # reset NAN counter:
+        global nanCounter
+        nanCounter = [0, 0]
+
         # initialize current result (full generation profile):
         current_result = Result("Site {} - SIS Full Tracking Generation Model".format(c[2]))
         current_result.format = "CSV"
         current_result.payload.append("Time, Generation [Wh/m2]")
+
+        # initialize current POA Breakdown Result:
+        current_poa_breakdown_result = Result("Site {} - POA Breakdown".format(c[2]))
+        current_poa_breakdown_result.format = "CSV"
+        current_poa_breakdown_result.payload.append("Direct Component [W], Diffuse Component [W], Ground Component [W]")
+        global poaBreakdownValues
+        poaBreakdownValues = []  # re-initialize breakdown values
 
         print("\n\nSite {} of {}:".format(coord_counter, len(coordinates)))
 
@@ -430,12 +450,14 @@ def run_poa_normal_model(model):
         summer_total = total_generation - winter_total
 
         # build string for overview result:
-        overview_to_append = str(coord_counter) + ", "
+        overview_to_append = str(c[2]) + ", "
         overview_to_append = overview_to_append + str(c[0]) + ", "
         overview_to_append = overview_to_append + str(c[1]) + ", "
         overview_to_append = overview_to_append + str(total_generation) + ", "
         overview_to_append = overview_to_append + str(winter_total) + ", "
-        overview_to_append = overview_to_append + str(summer_total)
+        overview_to_append = overview_to_append + str(summer_total) + ", "
+        overview_to_append = overview_to_append + str(nanCounter[0]) + ", "
+        overview_to_append = overview_to_append + str(nanCounter[1])
 
         overview_result.payload.append(overview_to_append)
 
@@ -449,6 +471,15 @@ def run_poa_normal_model(model):
 
         # add current result to model:
         model.results.append(current_result)
+
+        # finalize POA breakdown result:
+        for i in poaBreakdownValues:
+            str_to_append = str(i[0]) + ", "
+            str_to_append = str_to_append + str(i[1]) + ", "
+            str_to_append = str_to_append + str(i[2])
+            current_poa_breakdown_result.payload.append(str_to_append)
+
+        model.results.append(current_poa_breakdown_result)
 
     # add overview result to model:
     model.results.append(overview_result)
@@ -465,6 +496,12 @@ def run_poa_fixed_model(model):
         az = params[0]
         tilt = params[1]
 
+        is_a_sweep = True  # used to break the sweep if we have already optimized
+        if len(coordinates[0]) > 3:
+            is_a_sweep = False
+            az = "OPT"
+            tilt = "OPT"
+
         # get generation profiles for current sweep position:
         print("\n*******************************************************\n")
         print("\n-> Running POA_fixed model for azimuth = {}, tilt = {}".format(az, tilt))
@@ -477,18 +514,35 @@ def run_poa_fixed_model(model):
         # initialize overview result (totals for each site):
         overview_result = Result("{}-{} Fixed Generation Overview".format(az, tilt))
         overview_result.format = "CSV"
-        overview_result.payload.append("Site ID, Latitude (decimal), Longitude (decimal) ,Total Fixed Tilt Generation"
+        overview_result.payload.append("Site ID, Latitude (decimal), Longitude (decimal), Total Fixed Tilt Generation"
                                        " [Wh/m2], Winter Fixed Tilt Generation [Wh/m2], "
-                                       "Summer Fixed Tilt Generation [Wh/m2]")
+                                       "Summer Fixed Tilt Generation [Wh/m2], #NANs")
 
         coord_counter = 0
         for c in coordinates:
             coord_counter = coord_counter + 1
 
+            # set azimuth and tilt if we are not in a sweep:
+            if not is_a_sweep:
+                az = c[3]
+                tilt = c[4]
+
+            # reset NAN counter:
+            global nanCounter
+            nanCounter = [0, 0]
+
             # initialize current result (full generation profile):
             current_result = Result("{}-{} Site {} - Fixed Generation Model".format(az, tilt, c[2]))
             current_result.format = "CSV"
             current_result.payload.append("Time, Generation [Wh/m2]")
+
+            # initialize current POA Breakdown Result:
+            current_poa_breakdown_result = Result("{}-{} Site {} - POA Breakdown".format(az, tilt, c[2]))
+            current_poa_breakdown_result.format = "CSV"
+            current_poa_breakdown_result.payload.append("Direct Component [W], Diffuse Component [W],"
+                                                        " Ground Component [W]")
+            global poaBreakdownValues
+            poaBreakdownValues = []  # re-initialize breakdown values
 
             print("\n\n{}-{} Site {} of {}:".format(az, tilt, coord_counter, len(coordinates)))
 
@@ -538,12 +592,14 @@ def run_poa_fixed_model(model):
             summer_total = total_generation - winter_total
 
             # build string for overview result:
-            overview_to_append = str(coord_counter) + ", "
+            overview_to_append = str(c[2]) + ", "
             overview_to_append = overview_to_append + str(c[0]) + ", "
             overview_to_append = overview_to_append + str(c[1]) + ", "
             overview_to_append = overview_to_append + str(total_generation) + ", "
             overview_to_append = overview_to_append + str(winter_total) + ", "
-            overview_to_append = overview_to_append + str(summer_total)
+            overview_to_append = overview_to_append + str(summer_total) + ", "
+            overview_to_append = overview_to_append + str(nanCounter[0]) + ", "
+            overview_to_append = overview_to_append + str(nanCounter[1])
 
             overview_result.payload.append(overview_to_append)
 
@@ -557,11 +613,24 @@ def run_poa_fixed_model(model):
             print(winter_text)
             print(summer_text)
 
+            # finalize POA breakdown result:
+            for i in poaBreakdownValues:
+                str_to_append = str(i[0]) + ", "
+                str_to_append = str_to_append + str(i[1]) + ", "
+                str_to_append = str_to_append + str(i[2])
+                current_poa_breakdown_result.payload.append(str_to_append)
+
+            model.results.append(current_poa_breakdown_result)
+
             # add current result to model:
             model.results.append(current_result)
 
         # add overview result to model:
         model.results.append(overview_result)
+
+        # break the sweep for-loop if we are not in a sweep:
+        if not is_a_sweep:
+            break
 
     return model.results
 
@@ -711,6 +780,7 @@ def get_csv_data(path, dataset):
 
 
 # returns plane of array power received by one square meter of panel at given coordinates and time
+# NOTE: also adds component breakdown to the global poaBreakdownResult object
 # @coords: coordinates of interest [lat, lon]
 # @time: time of interest
 # @irradiation_array: [SIS, SISd] datasets
@@ -760,6 +830,10 @@ def get_poa(coords, time, irradiation_array, surface_albedo, solar_position, pan
 
     # return sum of all components:
     total_poa = beam_component + diffuse_component + ground_component
+
+    # append components to POA breakdown array:
+    poaBreakdownValues.append([beam_component, diffuse_component, ground_component])
+
     return total_poa
 
 
@@ -767,7 +841,6 @@ def get_poa(coords, time, irradiation_array, surface_albedo, solar_position, pan
 # @model: model object in question
 # @return: efficiency in [0,1]
 def get_efficiency(model):
-    # todo - function of temperature?
     return 0.15  # 15% efficiency for now
 
 
@@ -805,6 +878,14 @@ def get_coordinates(path):
             lat_decimal = convert_to_decimal(string_coords[0])
             long_decimal = convert_to_decimal(string_coords[1])
             extracted_coord = [lat_decimal, long_decimal, site_id]
+
+            # set optimized fixed position if given:
+            if len(row) > 3:
+                opt_az = float(row[2])
+                opt_tilt = float(row[3])
+                extracted_coord.append(opt_az)
+                extracted_coord.append(opt_tilt)
+
             to_return.append(extracted_coord)
         return to_return
 
@@ -875,6 +956,7 @@ def to_datetime_utc(timepoint):
 
 
 # function to get pixel value from netcdf - note: assumes spacial resolution of 0.05 degrees
+# NOTE: counting NANs and setting them to zero occurs here!
 # @data: xarray DataArray (variable selected)
 # @lat: latitude of pixel
 # @lon: longitude of pixel
@@ -884,7 +966,13 @@ def get_pixel_value(data, lat, lon, time, resolution):
     resolution_factor = resolution / 2  # e.g. 0.025 for 0.05deg resolution
     lat_slice = slice(lat-resolution_factor, lat+resolution_factor)
     lon_slice = slice(lon-resolution_factor, lon+resolution_factor)
-    to_return = data.sel(lat=lat_slice, lon=lon_slice, time=time).values
+    to_return = float(data.sel(lat=lat_slice, lon=lon_slice, time=time).values)
+
+    # if NAN => increment counter and set return value to zero:
+    if not to_return >= 0:
+        to_return = 0
+        global nanCounter
+        nanCounter[0] = nanCounter[0] + 1
     return float(to_return)
 
 
@@ -1009,7 +1097,8 @@ def get_avg_surface_albedo(dataset, lat, lon, time):
     if counter > 0:
         avg = current_sum / counter
     else:
-        print("\n[WARNING] No available surface albedo values for {}, {} at time {}".format(lat, lon, time))
+        global nanCounter
+        nanCounter[1] = nanCounter[1] + 1
         return 0
 
     # dataset values are in percent, we want absolute factor:
@@ -1069,6 +1158,54 @@ def get_full_fixed_panel_sweep_range():
             full_sweep_array.append([az, tilt])
 
     return full_sweep_array
+
+
+# function to get available parameter configurations for 10 deg azimuth sweep with fixed tilt = 12 deg
+# @return: array with each element in the form of [azimuth, tilt]
+def get_opt1_sweep_range():
+    # azimuth sweep in 10 degree increments:
+    max_az = 360
+    azimuth_sweep = []
+
+    while max_az >= 0:
+        azimuth_sweep.append(max_az)
+        max_az = max_az - 10
+
+    to_return = []
+
+    for az in azimuth_sweep:
+        to_return.append([az, 12])
+
+    return to_return
+
+
+# function to get available parameter configurations for 10 deg azimuth, 5 deg tilt (between 30, 65) sweep
+# @return: array with each element in the form of [azimuth, tilt]
+def get_opt2_sweep_range():
+    # azimuth sweep in 10 degree increments:
+    max_az = 360
+    azimuth_sweep = []
+
+    while max_az >= 0:
+        azimuth_sweep.append(max_az)
+        max_az = max_az - 10
+
+    # tilt sweep in 5 degree increments and range = [30, 65]:
+    max_tilt = 65
+    min_tilt = 30
+    tilt_sweep = []
+
+    while max_tilt >= min_tilt:
+        tilt_sweep.append(max_tilt)
+        max_tilt = max_tilt - 5
+
+    to_return = []
+
+    for az in azimuth_sweep:
+        for t in tilt_sweep:
+            to_return.append([az, t])
+
+    return to_return
 
 
 # ANALYSIS FUNCTIONS #
@@ -1175,6 +1312,7 @@ def extract_data(dataset, var_name, lon_min, lon_max, lat_min, lat_max):
 # @lon_max: maximum longitude for light-weight
 # @lat_min: minimum latitude for light-weight
 # @lat_max: maximum latitude for light-weight
+# @return: array of light-weight file paths -> to be used for subsequent merging
 def extract_from_tar(input_directory, output_directory, var_name, lon_min, lon_max, lat_min, lat_max):
     light_weight_file_paths = []  # used for merging all light-weight files
 
@@ -1228,12 +1366,13 @@ def extract_from_tar(input_directory, output_directory, var_name, lon_min, lon_m
             print(" -> extracted file written to disk.")
 
     print("\ntar extraction complete!")
-    return
+    return light_weight_file_paths
 
 
 # function to merge netcdf files
 # @merge__directory: directory containing files to merge -> output will be written here
 # @var_name: name of the variable of interest (netcdf name)
+# @return: path to merged file
 def merge_netcdf(merge_directory, var_name):
     file_names = []
     for (dirpath, dirnames, filenames) in walk(merge_directory):
@@ -1263,4 +1402,4 @@ def merge_netcdf(merge_directory, var_name):
     path_out = merge_directory + "\\00_" + var_name + "_merged.nc"
     current_merged_set.to_netcdf(path_out)
     print(" -> merged output written to {}.".format(path_out))
-    return
+    return path_out

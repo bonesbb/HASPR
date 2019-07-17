@@ -1,15 +1,43 @@
 import haspr
 from haspr import Dataset
 import sys
+import math
+from datetime import datetime
 
-path = "D:\\POA Datasets\\02_SAL_merged.nc"
+fullFixedPanelSweepRange = haspr.get_full_fixed_panel_sweep_range()
+fixedPanelSweepBatches = haspr.get_sweep_batches(fullFixedPanelSweepRange, 20)  # we want to run  20 at a time
+
+opt1_sweep = haspr.get_opt1_sweep_range()
+
+batches = haspr.get_sweep_batches(opt1_sweep, 20)
+
+print(len(batches[1]))
+
+sys.exit(2)
+
+print(len(fullFixedPanelSweepRange))
+
+time = '2005-01-01T00:00:00.000000000'
+
+latT = 45.890238429084
+lonT = 9.240239184
+
+#x = haspr.get_solar_position([latT, lonT], time)
+
+#print(x)
+
+
 
 d = Dataset("test")
-d.spatial_res = 0.25
+d.spatial_res = 0.05
+
+path = "D:\\POA Datasets\\03_2017_SIS_normal_merged.nc"
 
 haspr.load_netcdf_dataset(path, d)
 
-salX = d.payload.sal
+print(d.payload)
+
+sys.exit(1)
 
 time = '2005-01-01T00:00:00.000000000'
 
@@ -24,7 +52,7 @@ lonT2 = 5.875
 
 to_return = salX.sel(lat=latT2, lon=lonT2, time=time).values
 
-print(to_return)
+#print(to_return)
 
 pixel = haspr.get_pixel(latT2, lonT2, d.spatial_res)
 

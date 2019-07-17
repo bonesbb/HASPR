@@ -1,6 +1,6 @@
 # HASPR - High-Altitude Solar Power Research
 # Script to process Surface Albedo data for POA model input
-# Version 0.2
+# Version 0.3
 # Author: neyring
 
 import haspr
@@ -13,7 +13,7 @@ from datetime import timedelta
 time_of_interest = '2017-02-14T15:30:00.000000000'
 
 # load full SAL data into Dasaset object:
-input_path = "D:\\POA Datasets\\02_SAL_merged.nc"
+input_path = "D:\\POA Datasets\\02_2006_2015_SAL_merged.nc"
 
 d = Dataset("SAL")
 d.spatial_res = 0.25

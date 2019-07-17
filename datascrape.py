@@ -1,6 +1,6 @@
 # HASPR - High-Altitude Solar Power Research
 # Datascrape script - extract light-weight dataset for haspr input
-# Version 0.1
+# Version 0.3
 # Author: neyring
 
 import haspr
@@ -8,15 +8,16 @@ import datetime
 import sys
 
 # PARAMETERS #
-varName = "sal"
-inputTarDirectory = "D:\\SIS Test"
-outputDirectory = "D:\\Datascrape"
-mergeDirectory = "D:\\SAL"
-minLongitude = 5.85  # Swiss min=5.9
-maxLongitude = 10.6  # Swiss max=10.55
-minLatitude = 45.75  # Swiss min=45.8
-maxLatitude = 47.9  # Swiss max=47.85
 mode = "merge"  # "extract" for tar extraction, "merge" for merging directory
+haspr.osPathDelimiter = "\\"  # "/" for unix, "\\" for windows
+varName = "sal"  # NETCDF name of the variable of interest. Note: CMSAF names = "SIS", "SID", "sal"
+inputTarDirectory = "D:\\SIS Test"  # Directory of .tar files to extract from (only for "extract" mode)
+outputDirectory = "D:\\Datascrape"  # Directory to write output files to (only for "extract" mode)
+mergeDirectory = "D:\\POA Datasets\\SAL 2006-2015"  # Directory of files to merge (only for "merge" mode)
+minLongitude = 5.85  # Swiss min=5.9 (Note: only for "extract" mode)
+maxLongitude = 10.6  # Swiss max=10.55 (Note: only for "extract" mode)
+minLatitude = 45.75  # Swiss min=45.8 (Note: only for "extract" mode)
+maxLatitude = 47.9  # Swiss max=47.85 (Note: only for "extract" mode)
 
 # --SCRIPT BEGINS-- #
 dateStart = datetime.datetime.now()
