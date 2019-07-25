@@ -15,6 +15,7 @@ import tarfile
 import sys
 import pytz
 import math
+import numpy as np
 
 # GLOBAL VARIABLES
 outputText = []  # lines for output report
@@ -516,7 +517,8 @@ def run_poa_fixed_model(model):
         overview_result.format = "CSV"
         overview_result.payload.append("Site ID, Latitude (decimal), Longitude (decimal), Total Fixed Tilt Generation"
                                        " [Wh/m2], Winter Fixed Tilt Generation [Wh/m2], "
-                                       "Summer Fixed Tilt Generation [Wh/m2], #NANs")
+                                       "Summer Fixed Tilt Generation [Wh/m2], # Irradiation NANs,"
+                                       " # Surface Albedo NANs")
 
         coord_counter = 0
         for c in coordinates:
@@ -764,7 +766,7 @@ def write_csv(data, path):
 
 # function to get an array of data from a csv file
 # @path: file path to the csv sheet
-# @return: array of csv data
+# @return: array of csv data (no headers)
 def get_csv_data(path, dataset):
     to_return = []
     csv_file_reader = csv.reader(open(path, "r"))
@@ -1209,6 +1211,72 @@ def get_opt2_sweep_range():
 
 
 # ANALYSIS FUNCTIONS #
+
+# function to get hourly generation profile from 30-min input (1 year)
+# @title: desired output title (= file name without extension)
+# @half_hour_dataset: HASPR Dataset object containing one 30-min profile
+# @return: HASPR Result object containing the corresponding hourly profile
+def get_hourly_profile(title, half_hour_dataset):
+    new_title = title + " - hourly"
+    hourly_profile = Result(new_title)
+    hourly_profile.payload.append("Time, Generation [Wh/m2]")
+    input_values = half_hour_dataset.payload
+    for i in range(0, len(input_values)):
+        residual = i % 2
+        if residual == 0:
+            timestamp = input_values[i][0]
+            hourly_generation = float(input_values[i][1]) + float(input_values[i+1][1])
+            str_to_append = str(timestamp) + ", " + str(hourly_generation)
+            hourly_profile.payload.append(str_to_append)
+    return hourly_profile
+
+
+# function to get daily generation profile from 30-min input (1 year)
+# @title: desired output title (= file name without extension)
+# @half_hour_dataset: HASPR Dataset object containing one 30-min profile
+# @return: HASPR Result object containing the corresponding daily profile
+def get_daily_profile(title, half_hour_dataset):
+    new_title = title + " - daily"
+    daily_profile = Result(new_title)
+    daily_profile.payload.append("Time, Generation [Wh/m2]")
+    input_values = half_hour_dataset.payload
+    for i in range(0, len(input_values)):
+        residual = i % 48
+        if residual == 0:
+            timestamp = input_values[i][0]
+            daily_generation = 0
+            for j in range(i, i + 48):
+                daily_generation = daily_generation + float(input_values[j][1])
+            str_to_append = str(timestamp) + ", " + str(daily_generation)
+            daily_profile.payload.append(str_to_append)
+    return daily_profile
+
+
+# function to get monthly generation profile from 30-min input (1 year)
+# @title: desired output title (= file name without extension)
+# @half_hour_dataset: HASPR Dataset object containing one 30-min profile
+# @return: HASPR Result object containing the corresponding monthly profile
+def get_monthly_profile(title, half_hour_dataset):
+    new_title = title + " - monthly"
+    monthly_profile = Result(new_title)
+    monthly_profile.payload.append("Time, Generation [Wh/m2]")
+    input_values = half_hour_dataset.payload
+    first_date = get_date(input_values[0][0])  # returns [year, month, day]
+    year = first_date[0]
+    monthly_totals = np.zeros(12)
+    for i in range(0, len(input_values)):
+        timestamp = input_values[i][0]
+        gen_value = float(input_values[i][1])
+        current_date = get_date(timestamp)
+        month = int(current_date[1])
+        monthly_totals[month - 1] = monthly_totals[month - 1] + gen_value
+    for j in range(0, 12):
+        time_str = str(j+1) + "/" + str(year)
+        gen_str = str(monthly_totals[j])
+        str_to_append = time_str + ", " + gen_str
+        monthly_profile.payload.append(str_to_append)
+    return monthly_profile
+
 
 # function to get total sum of generation profiles given a group of individual profiles
 # @title: title of the Result to return
