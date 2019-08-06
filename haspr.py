@@ -1114,12 +1114,24 @@ def get_avg_surface_albedo(dataset, lat, lon, time):
 # @return: [year, month, day] as array of strings
 def get_date(time):
     time = str(time)
-    split = time.split('T')
-    date = split[0]
-    split = date.split('-')
-    year = split[0]
-    month = split[1]
-    day = split[2]
+    year = -1
+    month = -1
+    day = -1
+    if not time.__contains__('T'):
+        date = time.split(" - ")
+        date = date[0].split(" ")
+        date = date[0].split(".")
+        day = date[0]
+        month = date[1]
+        year = date[2]
+    else:
+        split = time.split('T')
+        date = split[0]
+        split = date.split('-')
+        year = split[0]
+        month = split[1]
+        day = split[2]
+
     return [year, month, day]
 
 
@@ -1219,7 +1231,7 @@ def get_opt2_sweep_range():
 def get_hourly_profile(title, half_hour_dataset):
     new_title = title + " - hourly"
     hourly_profile = Result(new_title)
-    hourly_profile.payload.append("Time, Generation [Wh/m2]")
+    hourly_profile.payload.append("Time, Generation")
     input_values = half_hour_dataset.payload
     for i in range(0, len(input_values)):
         residual = i % 2
@@ -1238,7 +1250,7 @@ def get_hourly_profile(title, half_hour_dataset):
 def get_daily_profile(title, half_hour_dataset):
     new_title = title + " - daily"
     daily_profile = Result(new_title)
-    daily_profile.payload.append("Time, Generation [Wh/m2]")
+    daily_profile.payload.append("Time, Generation")
     input_values = half_hour_dataset.payload
     for i in range(0, len(input_values)):
         residual = i % 48
@@ -1259,14 +1271,17 @@ def get_daily_profile(title, half_hour_dataset):
 def get_monthly_profile(title, half_hour_dataset):
     new_title = title + " - monthly"
     monthly_profile = Result(new_title)
-    monthly_profile.payload.append("Time, Generation [Wh/m2]")
+    monthly_profile.payload.append("Time, Generation")
     input_values = half_hour_dataset.payload
     first_date = get_date(input_values[0][0])  # returns [year, month, day]
     year = first_date[0]
     monthly_totals = np.zeros(12)
     for i in range(0, len(input_values)):
         timestamp = input_values[i][0]
-        gen_value = float(input_values[i][1])
+        generation = str(input_values[i][1])
+        gen_value = 0
+        if not generation.__contains__("N/A"):
+            gen_value = float(input_values[i][1])
         current_date = get_date(timestamp)
         month = int(current_date[1])
         monthly_totals[month - 1] = monthly_totals[month - 1] + gen_value
