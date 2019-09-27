@@ -10,9 +10,10 @@ from haspr import Dataset
 
 # Parameters #
 # directory containing generation profiles to remove leap days from:
-inputDirectory = "D:\\00_Results\\02_Generation Profiles\\Case 1 - Flat\\Site 82 - Historic Profiles"
+inputDirectory = "D:\\00_Results\\02_Generation Profiles\\Case 3 - 12 deg tilt total opt\\Site 28 - Historic Profiles"
 # directory to write output to:
-haspr.outputDirectory = "D:\\00_Results\\02_Generation Profiles\\Case 1 - Flat\\Site 82 - Historic Profiles wo leap"
+haspr.outputDirectory = "D:\\00_Results\\02_Generation Profiles\\Case 3 - 12 deg tilt total opt" \
+                        "\\Site 28 - Historic Profiles wo leap"
 # OS path delimiter ("\\" for windows, "/" for unix)"
 haspr.osPathDelimiter = "\\"
 

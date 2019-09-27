@@ -10,9 +10,9 @@ import sys
 
 # Parameters #
 # directory containing data series to convert to lower resolution:
-inputDirectory = "D:\\00_Results\\00_Example Output\\In"
+inputDirectory = "D:\\00_Results\\In"
 # directory to write output to:
-haspr.outputDirectory = "D:\\00_Results\\00_Example Output\\Out"
+haspr.outputDirectory = "D:\\00_Results\\Out"
 # OS path delimiter ("\\" for windows, "/" for unix)"
 haspr.osPathDelimiter = "\\"
 # desired temporal resolution of output ("H" - hourly, "D" - daily, "M" - monthly):
