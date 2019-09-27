@@ -1,5 +1,5 @@
 # HASPR - High-Altitude Solar Power Research
-# Datascrape script - extract light-weight dataset for haspr input
+# Script to extract light-weight data sets and merge files from large NETCDF4 directories
 # Version 0.3
 # Author: neyring
 
