@@ -1,4 +1,12 @@
 # HASPR
-Renewable energy research environment library
+Solar energy research environment written in Python
 
-Todo: add citation information etc.
+High-Altitude Solar Power Research (HASPR) -> Case Study of Floating Solar in Switzerland
+
+-----
+
+Developer: Nicholas Eyring (neyring)
+
+-----
+
+
