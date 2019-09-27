@@ -1,5 +1,5 @@
 # HASPR - High-Altitude Solar Power Research
-# Script to get reduction in imports given generation profiles
+# Script to get alleviation of supply/demand mismatch given generation profiles
 # Version 0.1
 # Author: neyring
 
@@ -12,10 +12,10 @@ from numpy import genfromtxt
 # PARAMETERS #
 # path to .csv file of supply/demand mismatch data (Wh, UTC, 30min res, no leap days):
 mismatchPath = "D:\\00_Results\\03_Supply Demand Mismatch\\5_2018 Mismatch - 30min res - UTC time.csv"
-# directory containing generation profiles (30min res) to run our analyses on (without leap days):
-inputDirectory = "D:\\00_Results\\03_Supply Demand Mismatch\\Input"
+# directory containing generation profiles (30min res, Wh) to run our analyses on (without leap days):
+inputDirectory = "D:\\00_Results\\03_Supply Demand Mismatch\\In"
 # directory to write output to:
-haspr.outputDirectory = "D:\\00_Results\\03_Supply Demand Mismatch\\Case 1 - Flat"
+haspr.outputDirectory = "D:\\00_Results\\03_Supply Demand Mismatch\\Case 5 - 30 to 65 deg winter opt"
 # OS path delimiter ("\\" for windows, "/" for unix)"
 haspr.osPathDelimiter = "\\"
 

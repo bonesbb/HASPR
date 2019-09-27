@@ -12,9 +12,9 @@ import sys
 
 # PARAMETERS #
 # directory containing individual revenue profiles (1h, CHF):
-inputDirectory = "D:\\00_Results\\06_Costs & Investment Profiles\\c_NPV & LCOE\\2 2018 Revenue"
+inputDirectory = "D:\\00_Results\\In"
 # directory to write output to:
-haspr.outputDirectory = "D:\\00_Results\\06_Costs & Investment Profiles\\c_NPV & LCOE\\3 Lifetime Revenues"
+haspr.outputDirectory = "D:\\00_Results\\Out"
 # OS path delimiter ("\\" for windows, "/" for unix)"
 haspr.osPathDelimiter = "\\"
 # revenue to sum -> "bid" for bid revenue, "potential" for total potential revenue:

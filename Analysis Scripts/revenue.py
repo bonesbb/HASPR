@@ -15,10 +15,9 @@ from numpy import genfromtxt
 prices_path = "D:\\00_Results\\05_Revenue\\Processed Day-Ahead Price Datasets - no leap days\\1h" \
               "\\2018 Day-ahead Prices UTC - no leap days.csv"
 # directory containing generation profiles (Wh, 1h res) to run our analyses on (without leap days):
-inputDirectory = "D:\\00_Results\\06_Costs & Investment Profiles\\c_NPV & LCOE" \
-                 "\\1_1 Individual Total Expected Output - hourly"
+inputDirectory = "D:\\00_Results\\Out"
 # directory to write output to:
-haspr.outputDirectory = "D:\\00_Results\\06_Costs & Investment Profiles\\c_NPV & LCOE\\2 2018 Revenue"
+haspr.outputDirectory = "D:\\00_Results\\05_Revenue\\Case 5 - 30 to 65 deg winter opt\\1 - Import Offset\\2018"
 # OS path delimiter ("\\" for windows, "/" for unix)"
 haspr.osPathDelimiter = "\\"
 chf_eur_rate = 1.09  # CHF/EUR exchange rate (CHF per EUR)
@@ -30,6 +29,9 @@ timestamps = []
 price_values = []
 for p in prices.payload:
     timestamps.append(str(p[0]))
+    # set N/A's to zero:
+    if "N/A" in p[1]:
+        p[1] = 0
     price_values.append(float(p[1]))
 
 price_values = np.array(price_values)  # use numpy for efficient element-wise calculations

@@ -1,5 +1,5 @@
 # HASPR - High-Altitude Solar Power Research
-# Script to calculate expected output for a given site
+# Script to calculate expected output for one site given a directory of historic profiles
 # Version 0.1
 # Author: neyring
 
@@ -14,13 +14,13 @@ import sys
 
 # Parameters #
 # directory containing historic .csv generation profiles (without leap days):
-inputDirectory = "D:\\00_Results\\02_Generation Profiles\\Case 1 - Flat\\Site 82 - Historic Profiles wo leap"
+inputDirectory = "D:\\00_Results\\02_Generation Profiles\\Case 2 - Tracking\\Site 82 - Historic Profiles wo leap"
 # directory to write output to:
-haspr.outputDirectory = "D:\\00_Results\\02_Generation Profiles\\Case 1 - Flat"
+haspr.outputDirectory = "D:\\00_Results\\02_Generation Profiles\\Case 2 - Tracking\\0 Individual Expected Output"
 # OS path delimiter ("\\" for windows, "/" for unix)"
 haspr.osPathDelimiter = "\\"
 # title for result group:
-resultGroupTitle = "Site 82 - Flat"
+resultGroupTitle = "Site 82 - Tracking"
 
 # get all file names in inputDirectory:
 file_names = []

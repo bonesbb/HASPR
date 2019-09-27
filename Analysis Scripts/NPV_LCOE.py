@@ -1,5 +1,5 @@
 # HASPR - High-Altitude Solar Power Research
-# Calculates the NPV and LCOE given lifetime costs/revenues and expected generation
+# Calculates the NPV and LCOE given lifetime costs/revenues and expected generation profiles
 # Version 0.1
 # Author: neyring
 
@@ -12,19 +12,20 @@ import sys
 
 # PARAMETERS #
 # path to .csv file containing lifetime costs [CHF]:
-costsPath = "D:\\00_Results\\06_Costs & Investment Profiles\\a_Lifetime Costs\\Output" \
-            "\\Costs - Flat Panels - 1 percent SA.csv"
+costsPath = "D:\\00_Results\\06_Costs & Investment Profiles\\a_Lifetime Costs\\Break Even Test" \
+            "\\Tracking - Break-even costs.csv"
 # directory containing lifetime revenues [CHF]:
-revenuesDirectory = "D:\\00_Results\\06_Costs & Investment Profiles\\c_NPV & LCOE\\3 Lifetime Revenues"
+revenuesDirectory = "D:\\00_Results\\06_Costs & Investment Profiles\\b_Lifetime Revenue" \
+                    "\\Case 2 - Tracking\\Lifetime Potential Revenue\\Individual Sites\\100 percent"
 # directory containing yearly generation profiles [Wh]:
-generationProfilesDirectory = "D:\\00_Results\\06_Costs & Investment Profiles\\c_NPV & LCOE" \
-                              "\\1 Individual Total Expected Output"
+generationProfilesDirectory = "D:\\00_Results\\02_Generation Profiles\\Case 2 - Tracking" \
+                              "\\0 Individual Expected Output - 100 percent SA"
 # directory to write output to:
-haspr.outputDirectory = "D:\\00_Results\\06_Costs & Investment Profiles\\c_NPV & LCOE\\Output"
+haspr.outputDirectory = "D:\\00_Results\\06_Costs & Investment Profiles\\c_NPV & LCOE\\Break Even Test"
 # OS path delimiter ("\\" for windows, "/" for unix)"
 haspr.osPathDelimiter = "\\"
 # desired output title:
-outputTitle = "NPV & LCOE - RES2 - Individual Pot Rev - Flat 1 percent SA"
+outputTitle = "Break Even - Tracking"
 # list of discount rates [%] to use for NPV and LCOE:
 discountRates = [7, 8, 10]
 # residual value of system as % of capital costs:
@@ -105,13 +106,7 @@ def get_lcoe(yearly_production, costs_array, discount_rate):
         discounted_o_and_m = yearly_o_and_m / (discount_factor ** m)
         discounted_residual_value = residual_value / (discount_factor ** m)
         to_sum = discounted_o_and_m - discounted_residual_value  # subtract discounted residual value!
-        #to_sum = discounted_o_and_m
         lifetime_costs = lifetime_costs + to_sum
-
-    # calculate residual term:
-    #discounted_residual_value = residual_value / (discount_factor ** lifetime)
-
-    #lifetime_costs = lifetime_costs - discounted_residual_value
 
     to_return = lifetime_costs / lifetime_production
     return to_return

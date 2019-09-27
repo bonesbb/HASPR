@@ -13,10 +13,10 @@ from numpy import genfromtxt
 # PARAMETERS #
 # path to .csv file of grid CI data (Wh, UTC, 1h res, no leap days):
 ciPath = "D:\\00_Results\\04_CO2 Offset\\1_Swiss Grid CI - 1h - UTC.csv"
-# directory containing generation profiles (1h res) to run our analyses on (without leap days):
-inputDirectory = "D:\\00_Results\\04_CO2 Offset\\Input"
+# directory containing generation profiles (1h res, Wh) to run our analyses on (without leap days):
+inputDirectory = "D:\\00_Results\\Out"
 # directory to write output to:
-haspr.outputDirectory = "D:\\00_Results\\04_CO2 Offset\\Case 1 - Flat"
+haspr.outputDirectory = "D:\\00_Results\\04_CO2 Offset\\Case 5 - 30 to 65 deg winter opt"
 # OS path delimiter ("\\" for windows, "/" for unix)"
 haspr.osPathDelimiter = "\\"
 

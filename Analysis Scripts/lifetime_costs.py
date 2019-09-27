@@ -9,17 +9,17 @@ from numpy import genfromtxt
 
 # PARAMETERS #
 # path to .csv file containing Site ID (column 1), panel surface area [m2] (column 2), and tilt angle [deg] (column 3):
-inputPath = "D:\\00_Results\\06_Costs & Investment Profiles\\Input CSV - Flat Panels - 1 percent SA.csv"
+inputPath = "D:\\00_Results\\06_Costs & Investment Profiles\\a_Lifetime Costs\\Inputs\\Case 1 - 100 percent SA.csv"
 # directory to write output to:
-haspr.outputDirectory = "D:\\00_Results\\06_Costs & Investment Profiles\\Output"
+haspr.outputDirectory = "D:\\00_Results\\06_Costs & Investment Profiles\\a_Lifetime Costs\\Break Even Test"
 # OS path delimiter ("\\" for windows, "/" for unix)"
 haspr.osPathDelimiter = "\\"
 # desired output title:
-outputTitle = "Costs - Flat Panels - 1 percent SA"
+outputTitle = "Tracking - Break-even costs"
 # system lifetime in years:
 lifetime = 25
 # base price for capital costs [CHF/Wp]:
-basePrice = 1.43
+basePrice = 1.43  # model = 1.43
 # angle cost factor for capital costs [CHF/Wp/deg]:
 angleCostFactor = 0.0187
 # O&M as percentage of capital costs per year [%]:
