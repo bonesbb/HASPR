@@ -86,6 +86,6 @@ Example use:  $ bsub python ./main_euler_fixed.py coords/coords1.csv output/B31 
 
 **Note:** The path to the SAL dataset is hardcoded into the three Euler scripts since the entire dataset (spanning the years 2006-2015) is small enough to handle with one file.
 
-**Note:** For memory management reasons, batches only incorporate one year of data (i.e. a batch will be defined for multiple sites over the same year instead of multiple years for one site)
+**Note:** For memory management reasons, batches only incorporate one year of data (i.e. a batch will be defined for multiple sites over the same year instead of multiple years for one site).
 
 
