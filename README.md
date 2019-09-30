@@ -15,65 +15,65 @@ HASPR’s scripts are segmented in two parts. The first part calculates generati
 
 **Core Scripts:**
 
-*datascrape.py*				Script to extract light-weight data sets and merge files from large NetCDF4 directories.
+*datascrape.py*:			Script to extract light-weight data sets and merge files from large NetCDF4 directories.
 
-*haspr.py*				Background script/library containing classes, functions, and global variables.
+*haspr.py*:				Background script/library containing classes, functions, and global variables.
 
 **Generation Scripts:**
 
-*batch_check.py*			Checks if batches have successfully run. Outputs incomplete batch list.
+*batch_check.py*:			Checks if batches have successfully run. Outputs incomplete batch list.
 
-*batch_submission_bf.py*		Script for setting up brute force batch jobs for fixed-tilt optimizations on Euler.
+*batch_submission_bf.py*:		Script for setting up brute force batch jobs for fixed-tilt optimizations on Euler.
 
-*batch_submission_opt.py*		Script for setting up batch jobs for fixed-tilt calculations on Euler.
+*batch_submission_opt.py*:		Script for setting up batch jobs for fixed-tilt calculations on Euler.
 
-*main_euler_fixed.py*			Main script for Euler fixed-tilt batches. Sets parameters, runs models, and dumps data.
+*main_euler_fixed.py*:			Main script for Euler fixed-tilt batches. Sets parameters, runs models, and dumps data.
 
-*main_euler_flat.py*			Main script for Euler flat batches. Sets parameters, runs models, and dumps data.
+*main_euler_flat.py*:			Main script for Euler flat batches. Sets parameters, runs models, and dumps data.
 
-*main_euler_tracking.py*		Main script for Euler tracking batches. Sets parameters, runs models, and dumps data.
+*main_euler_tracking.py*:		Main script for Euler tracking batches. Sets parameters, runs models, and dumps data.
 
-*optimization_results.py*		Determines optimum fixed-tilt positions given directories of brute force output.
+*optimization_results.py*:		Determines optimum fixed-tilt positions given directories of brute force output.
 
-*organize_batch_output.py*		Copies files from batch output to corresponding historic profile directories.
+*organize_batch_output.py*:		Copies files from batch output to corresponding historic profile directories.
 
 **Processing Scripts:**
 
-*global_remove_leap.py*			Removes leap days for a global panel configuration case.
+*global_remove_leap.py*:		Removes leap days for a global panel configuration case.
 
-*lower_resolution.py* 			Converts data series to hourly, daily, or monthly resolution. 
+*lower_resolution.py*: 			Converts data series to hourly, daily, or monthly resolution. 
 
-*remove_leap_days.py*			Script to remove leap days from a directory of generation profiles.
+*remove_leap_days.py*:			Script to remove leap days from a directory of generation profiles.
 
 **Analysis Scripts:**
 
-*average_aggregate_revenue.py*		Outputs average bid and potential revenue given a directory of aggregate revenue profiles.
+*average_aggregate_revenue.py*:		Outputs average bid and potential revenue given a directory of aggregate revenue profiles.
 
-*average_individual_revenue.py*		Script which averages individual revenue profiles from historic data.
+*average_individual_revenue.py*:	Script which averages individual revenue profiles from historic data.
 
-*co2_offset.py*				Calculates CO2-equivalent offset given generation profiles.
+*co2_offset.py*:			Calculates CO2-equivalent offset given generation profiles.
 
-*expected_output_analysis.py*		Computes aggregate lower bounds and historic variance given a directory of individual expected 						output.
+*expected_output_analysis.py*:		Computes aggregate lower bounds and historic variance given a directory of individual expected 						output.
 
-*expected_site_output.py*		Script to calculate expected output for one site given a directory of historic profiles.
+*expected_site_output.py*:		Script to calculate expected output for one site given a directory of historic profiles.
 
-*global_expected_site_output.py*	Script to calculate expected output for all sites under a design configuration.
+*global_expected_site_output.py*:	Script to calculate expected output for all sites under a design configuration.
 
-*lifetime_costs.py*			Calculates costs given a CSV file of sites, panel surface area, and tilt angles.
+*lifetime_costs.py*:			Calculates costs given a CSV file of sites, panel surface area, and tilt angles.
 
-*lifetime_revenue.py*			Calculates yearly and cumulative revenue for system lifetime given a directory of revenue 						profiles.
+*lifetime_revenue.py*:			Calculates yearly and cumulative revenue for system lifetime given a directory of revenue 						profiles.
 
-*NPV_LCOE.py*				Computes the NPV and LCOE given lifetime costs/revenues and expected generation profiles.
+*NPV_LCOE.py*:				Computes the NPV and LCOE given lifetime costs/revenues and expected generation profiles.
 
-*revenue.py*				Outputs revenue profiles for all generation profiles in a given directory.
+*revenue.py*:				Outputs revenue profiles for all generation profiles in a given directory.
 
-*sum_individual.py*			Script to calculate annual sums given generation profiles.
+*sum_individual.py*:			Script to calculate annual sums given generation profiles.
 
-*supply_demand_mismatch.py*		Computes the potential alleviation of supply/demand mismatches given generation profiles.
+*supply_demand_mismatch.py*:		Computes the potential alleviation of supply/demand mismatches given generation profiles.
 
-*total_expected_output.py*		Script to calculate generation profiles in Wh from a directory of profiles in Wh per square 						meter.
+*total_expected_output.py*:		Script to calculate generation profiles in Wh from a directory of profiles in Wh per square 						meter.
 
-*total_generation_profile.py*		Script to calculate aggregate generation profiles given surface areas.
+*total_generation_profile.py*:		Script to calculate aggregate generation profiles given surface areas.
 
 -----
 
