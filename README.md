@@ -1,5 +1,5 @@
 # HASPR
-Solar energy research environment written in Python
+HASPR grants users the ability to model the output of solar arrays given high-resolution meteorological data.
 
 High-Altitude Solar Power Research (HASPR) -> Case Study of Floating Solar in Switzerland
 
